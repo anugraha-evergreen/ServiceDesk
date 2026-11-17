@@ -76,3 +76,21 @@ VALUES
     ('plot-9', '104', 'Sunil Narang', '9845112244', 'sunil.narang@example.com', 'vacant', true),
     ('plot-10', '118', 'Deepa & R. Natarajan', '9980334455', 'natarajan.r@example.com', 'vacant', true)
 ON CONFLICT (plot_number) DO NOTHING;
+
+-- 7. Supabase Storage Bucket for Resident Documents (1GB free, zero quota hurdles)
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('documents', 'documents', true)
+ON CONFLICT (id) DO NOTHING;
+
+CREATE POLICY "Allow public storage insert"
+ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'documents');
+
+CREATE POLICY "Allow public storage select"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'documents');
+
+CREATE POLICY "Allow public storage update"
+ON storage.objects FOR UPDATE
+USING (bucket_id = 'documents');
+

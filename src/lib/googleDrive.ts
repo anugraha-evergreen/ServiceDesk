@@ -127,6 +127,8 @@ async function findOrCreateFolder(
     fields: 'files(id, name)',
     spaces: 'drive',
     pageSize: 1,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
   });
 
   if (res.data.files && res.data.files.length > 0) {
@@ -143,6 +145,7 @@ async function findOrCreateFolder(
   const folder = await drive.files.create({
     requestBody: fileMetadata,
     fields: 'id',
+    supportsAllDrives: true,
   });
 
   return folder.data.id!;
@@ -258,6 +261,7 @@ export async function uploadFileToDrive(params: {
       body: stream,
     },
     fields: 'id,name,webViewLink',
+    supportsAllDrives: true,
   });
 
   return {
