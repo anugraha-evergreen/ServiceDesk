@@ -12,6 +12,9 @@ export const Navbar: React.FC = () => {
 
   const handleLogout = () => {
     setClientSession(null);
+    try {
+      sessionStorage.removeItem('aelra_cache_admin_requests');
+    } catch {}
     router.push('/');
   };
 
@@ -66,7 +69,7 @@ export const Navbar: React.FC = () => {
                 Owner Login
               </Link>
               <Link
-                href="/admin/login"
+                href="/?tab=admin"
                 className="px-3 py-1.5 text-xs font-semibold bg-emerald-700 text-white hover:bg-emerald-800 rounded-lg shadow-xs transition flex items-center gap-1"
               >
                 <Shield className="w-3.5 h-3.5" />

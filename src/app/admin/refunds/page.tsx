@@ -24,7 +24,7 @@ export default function AdminRefundsPage() {
 
   useEffect(() => {
     if (!loading && (!session || session.role !== 'admin')) {
-      router.push('/admin/login');
+      router.push('/');
       return;
     }
     loadData();

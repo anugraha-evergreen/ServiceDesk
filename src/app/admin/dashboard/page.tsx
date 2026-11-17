@@ -35,7 +35,7 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     if (!loading && (!session || session.role !== 'admin')) {
-      router.push('/admin/login');
+      router.push('/');
       return;
     }
 

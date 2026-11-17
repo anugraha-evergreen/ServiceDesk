@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { setClientSession } from '@/lib/session';
 import {
   Trees,
@@ -16,8 +16,34 @@ import {
 } from 'lucide-react';
 
 export default function HomePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-20 text-center text-xs text-gray-400 animate-pulse">
+          Loading portal sign-in...
+        </div>
+      }
+    >
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+function HomeContent() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'owner' | 'admin'>('owner');
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<'owner' | 'admin'>(
+    tabParam === 'admin' ? 'admin' : 'owner'
+  );
+
+  useEffect(() => {
+    if (tabParam === 'admin') {
+      setActiveTab('admin');
+    } else if (tabParam === 'owner') {
+      setActiveTab('owner');
+    }
+  }, [tabParam]);
 
   // Owner Form State
   const [plotNumber, setPlotNumber] = useState('');
