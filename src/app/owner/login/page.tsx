@@ -13,21 +13,6 @@ export default function OwnerLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Quick preset test plots for instant testing
-  const samplePlots = [
-    { plot: '42', name: 'Anand Kumar Hegde', phone: '9448123456', tag: 'Pending Checklist' },
-    { plot: '27', name: 'Rajesh Venkatraman', phone: '9880198801', tag: 'Ready for Refund' },
-    { plot: '58', name: 'Meenakshi Iyer', phone: '9900223344', tag: 'Re-Measurement' },
-    { plot: '12', name: 'Kavitha Sundaram', phone: '9845012345', tag: 'New Vacant Plot' },
-  ];
-
-  const handleSelectSample = (s: (typeof samplePlots)[0]) => {
-    setPlotNumber(s.plot);
-    setOwnerName(s.name);
-    setPhone(s.phone);
-    setError(null);
-  };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -144,27 +129,6 @@ export default function OwnerLoginPage() {
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
-
-        {/* Quick Demo Pre-sets */}
-        <div className="pt-3 border-t border-gray-100">
-          <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">
-            Quick Fill Test Plots:
-          </span>
-          <div className="grid grid-cols-2 gap-2">
-            {samplePlots.map((sp) => (
-              <button
-                key={sp.plot}
-                type="button"
-                onClick={() => handleSelectSample(sp)}
-                className="p-2 text-left rounded-lg border border-gray-200 bg-gray-50 hover:bg-emerald-50 hover:border-emerald-300 transition text-[11px]"
-              >
-                <div className="font-bold text-gray-900">Plot #{sp.plot}</div>
-                <div className="text-gray-500 truncate">{sp.name}</div>
-                <div className="text-emerald-700 font-medium text-[10px] mt-0.5">{sp.tag}</div>
-              </button>
-            ))}
-          </div>
-        </div>
 
         {/* Strict Privacy Reminder */}
         <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200 flex items-start gap-2">

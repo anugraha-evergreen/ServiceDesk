@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     const role = (searchParams.get('role') || 'owner') as UserRole;
     const plotNumber = searchParams.get('plotNumber') || undefined;
 
-    const requests = getAllRequests(role, plotNumber);
+    const requests = await getAllRequests(role, plotNumber);
     return NextResponse.json({ success: true, requests });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Failed to fetch requests';
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const created = createServiceRequest({
+    const created = await createServiceRequest({
       plotNumber,
       ownerName,
       phone,

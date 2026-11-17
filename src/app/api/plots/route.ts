@@ -3,7 +3,7 @@ import { amalgamatePlots, getAllPlots, updatePlotRecord } from '@/lib/store';
 
 export async function GET() {
   try {
-    const plots = getAllPlots();
+    const plots = await getAllPlots();
     return NextResponse.json({ success: true, plots });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Error fetching plots';
@@ -25,13 +25,13 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const result = amalgamatePlots(primaryPlotNumber, secondaryPlotNumbers, unifiedPlotNumber);
+      const result = await amalgamatePlots(primaryPlotNumber, secondaryPlotNumbers, unifiedPlotNumber);
       return NextResponse.json(result);
     }
 
     if (action === 'update') {
       const { plot } = body;
-      const updated = updatePlotRecord(plot);
+      const updated = await updatePlotRecord(plot);
       return NextResponse.json({ success: true, plot: updated });
     }
 

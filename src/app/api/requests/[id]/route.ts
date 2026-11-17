@@ -11,7 +11,7 @@ export async function GET(
     const { searchParams } = new URL(req.url);
     const role = (searchParams.get('role') || 'owner') as UserRole;
 
-    const request = getRequestById(id, role);
+    const request = await getRequestById(id, role);
     if (!request) {
       return NextResponse.json({ error: 'Request not found' }, { status: 404 });
     }
@@ -31,7 +31,7 @@ export async function PATCH(
     const { id } = await params;
     const updates = await req.json();
 
-    const updated = updateServiceRequest(id, updates);
+    const updated = await updateServiceRequest(id, updates);
     if (!updated) {
       return NextResponse.json({ error: 'Request not found' }, { status: 404 });
     }

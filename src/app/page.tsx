@@ -28,24 +28,9 @@ export default function HomePage() {
 
   // Admin Form State
   const [passcode, setPasscode] = useState('');
-  const [adminName, setAdminName] = useState('MC Executive');
+  const [adminName, setAdminName] = useState('');
   const [adminLoading, setAdminLoading] = useState(false);
   const [adminError, setAdminError] = useState<string | null>(null);
-
-  // Quick Demo Pre-sets for fast testing
-  const samplePlots = [
-    { plot: '42', name: 'Anand Kumar Hegde', phone: '9448123456', desc: 'Pending Checklist' },
-    { plot: '27', name: 'Rajesh Venkatraman', phone: '9880198801', desc: 'Ready for Refund' },
-    { plot: '58', name: 'Meenakshi Iyer', phone: '9900223344', desc: 'Re-Measurement' },
-    { plot: '12', name: 'Kavitha Sundaram', phone: '9845012345', desc: 'New Vacant Plot' },
-  ];
-
-  const handleSelectSample = (s: (typeof samplePlots)[0]) => {
-    setPlotNumber(s.plot);
-    setOwnerName(s.name);
-    setPhone(s.phone);
-    setOwnerError(null);
-  };
 
   const handleOwnerLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -238,27 +223,6 @@ export default function HomePage() {
               </button>
             </form>
 
-            {/* Quick Fill Test Plots */}
-            <div className="pt-3 border-t border-gray-100">
-              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">
-                Quick-Test Presets (Tap to Autofill):
-              </span>
-              <div className="grid grid-cols-2 gap-2">
-                {samplePlots.map((sp) => (
-                  <button
-                    key={sp.plot}
-                    type="button"
-                    onClick={() => handleSelectSample(sp)}
-                    className="p-2 text-left rounded-lg border border-gray-200 bg-gray-50 hover:bg-emerald-50 hover:border-emerald-300 transition text-[11px] cursor-pointer"
-                  >
-                    <div className="font-bold text-gray-900">Plot #{sp.plot}</div>
-                    <div className="text-gray-500 truncate">{sp.name}</div>
-                    <div className="text-emerald-700 font-medium text-[10px] mt-0.5">{sp.desc}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
             {/* Strict Privacy Notice */}
             <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200 flex items-start gap-2">
               <Shield className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
@@ -300,10 +264,6 @@ export default function HomePage() {
                   className="w-full text-xs sm:text-sm px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-emerald-600 focus:bg-white transition font-mono"
                   required
                 />
-                <p className="text-[11px] text-gray-400 mt-1">
-                  Default development passcode:{' '}
-                  <code className="text-emerald-700 font-bold">evergreen2026</code>
-                </p>
               </div>
 
               <div>
@@ -328,14 +288,6 @@ export default function HomePage() {
                 <span>{adminLoading ? 'Verifying...' : 'Unlock Admin Portal'}</span>
               </button>
             </form>
-
-            <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-[11px] text-gray-500 flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>
-                Configured via <code className="font-mono text-gray-700">ADMIN_PASSCODE</code> in{' '}
-                <code className="font-mono text-gray-700">.env.local</code>.
-              </span>
-            </div>
           </div>
         )}
       </div>

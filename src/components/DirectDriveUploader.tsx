@@ -65,6 +65,11 @@ export const DirectDriveUploader: React.FC<DirectDriveUploaderProps> = ({
 
       const { uploadUrl, fileId, folderPath, isMock } = await initRes.json();
 
+      let realDriveFileId = fileId;
+      let realDriveWebViewLink = isMock
+        ? `https://drive.google.com/file/d/mock-${category}-${plotNumber}/view`
+        : undefined;
+
       // 2. Direct browser-to-Drive chunked PUT upload (bypassing Vercel's 4.5MB limit)
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -82,6 +87,18 @@ export const DirectDriveUploader: React.FC<DirectDriveUploaderProps> = ({
           // Google Drive Resumable upload returns 200 or 201 when complete
           if (xhr.status >= 200 && xhr.status < 300) {
             setProgress(100);
+            try {
+              if (xhr.responseText) {
+                const parsed = JSON.parse(xhr.responseText);
+                if (parsed.id) {
+                  realDriveFileId = parsed.id;
+                  realDriveWebViewLink =
+                    parsed.webViewLink || `https://drive.google.com/file/d/${parsed.id}/view`;
+                }
+              }
+            } catch {
+              // response may be non-json in edge cases
+            }
             resolve();
           } else {
             reject(new Error(`Upload failed with status code ${xhr.status}`));
@@ -99,10 +116,8 @@ export const DirectDriveUploader: React.FC<DirectDriveUploaderProps> = ({
         fileName: selected.name,
         fileSizeBytes: selected.size,
         mimeType: selected.type || 'application/octet-stream',
-        driveFileId: fileId || `drive-${Date.now()}`,
-        driveWebViewLink: isMock
-          ? `https://drive.google.com/file/d/mock-${category}-${plotNumber}/view`
-          : undefined, // Only filled if available
+        driveFileId: realDriveFileId || `drive-${Date.now()}`,
+        driveWebViewLink: realDriveWebViewLink,
         uploadedAt: new Date().toISOString(),
       };
 

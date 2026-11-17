@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     }
 
     const cleanInput = plotNumber.trim();
-    const resolvedPlot = getPlotByNumber(cleanInput);
+    const resolvedPlot = await getPlotByNumber(cleanInput);
 
     const actualPlotNumber = resolvedPlot ? resolvedPlot.plotNumber : cleanInput;
     const wasAmalgamated = Boolean(resolvedPlot && resolvedPlot.plotNumber !== cleanInput);

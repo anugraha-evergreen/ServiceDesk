@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Missing requestId parameter' }, { status: 400 });
     }
 
-    let request = requestId !== 'blank' ? getRequestById(requestId, 'admin') : null;
+    let request = requestId !== 'blank' ? await getRequestById(requestId, 'admin') : null;
     if (!request && isBlank) {
       request = {
         id: 'AEOWA-BLANK',

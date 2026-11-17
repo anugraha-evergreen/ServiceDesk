@@ -8,7 +8,7 @@ import { ShieldCheck, Lock, ArrowRight, KeyRound } from 'lucide-react';
 export default function AdminLoginPage() {
   const router = useRouter();
   const [passcode, setPasscode] = useState('');
-  const [name, setName] = useState('MC Executive');
+  const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,9 +77,6 @@ export default function AdminLoginPage() {
                 required
               />
             </div>
-            <p className="text-[11px] text-gray-400 mt-1">
-              Default development passcode: <code className="text-emerald-700 font-bold">evergreen2026</code>
-            </p>
           </div>
 
           <div>
@@ -104,13 +101,6 @@ export default function AdminLoginPage() {
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
-
-        <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-[11px] text-gray-500 flex items-center gap-2">
-          <KeyRound className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>
-            Passcode is configurable via <code className="font-mono text-gray-700">ADMIN_PASSCODE</code> in <code className="font-mono text-gray-700">.env.local</code>.
-          </span>
-        </div>
       </div>
     </div>
   );
