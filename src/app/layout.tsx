@@ -8,9 +8,13 @@ export const metadata: Metadata = {
   description:
     'Portal for plot-specific NOCs, construction compliance checklists, security deposits, and document management.',
   icons: {
-    icon: '/images/aeowa-logo.png',
-    shortcut: '/images/aeowa-logo.png',
-    apple: '/images/aeowa-logo.png',
+    icon: [
+      { url: '/icon.png', sizes: '192x192', type: 'image/png' },
+      { url: '/favicon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.ico' },
+    ],
+    shortcut: '/icon.png',
+    apple: '/apple-icon.png',
   },
 };
 

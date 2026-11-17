@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession, setClientSession } from '@/lib/session';
-import { Trees, Shield, User, LogOut } from 'lucide-react';
+import { Shield, User, LogOut } from 'lucide-react';
 
 export const Navbar: React.FC = () => {
   const { session } = useSession();
@@ -23,8 +23,12 @@ export const Navbar: React.FC = () => {
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Brand Logo & Name */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-10 h-10 rounded-xl bg-emerald-700 flex items-center justify-center text-white shadow-sm shadow-emerald-700/20 group-hover:bg-emerald-800 transition">
-            <Trees className="w-6 h-6" />
+          <div className="w-10 h-10 rounded-xl bg-white border border-emerald-200/90 flex items-center justify-center p-1 shadow-2xs group-hover:border-emerald-500 group-hover:shadow-xs transition">
+            <img
+              src="/images/aeowa-logo.png"
+              alt="AEOWA Logo"
+              className="w-full h-full object-contain"
+            />
           </div>
           <div>
             <span className="font-extrabold text-base tracking-tight text-emerald-950 flex items-center gap-1">

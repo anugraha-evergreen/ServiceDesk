@@ -129,7 +129,7 @@ export default function AdminDashboardPage() {
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold mb-1">
             <ShieldCheck className="w-3.5 h-3.5" />
-            <span>AEOWA Management Committee</span>
+            <span>AEOWA Managing Committee</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
             Association Requests &amp; Compliance Queue

@@ -4,7 +4,6 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { setClientSession } from '@/lib/session';
 import {
-  Trees,
   Building2,
   ShieldCheck,
   User,
@@ -126,9 +125,13 @@ function HomeContent() {
   return (
     <div className="max-w-md mx-auto space-y-6 pt-2 sm:pt-6 animate-in fade-in duration-200">
       {/* Brand Header */}
-      <div className="text-center space-y-2">
-        <div className="w-14 h-14 rounded-2xl bg-emerald-700 text-white flex items-center justify-center mx-auto shadow-md shadow-emerald-700/20">
-          <Trees className="w-8 h-8" />
+      <div className="text-center space-y-2.5">
+        <div className="w-16 h-16 rounded-2xl bg-white border border-emerald-200/90 flex items-center justify-center mx-auto shadow-md shadow-emerald-700/10 p-2">
+          <img
+            src="/images/aeowa-logo.png"
+            alt="AEOWA Logo"
+            className="w-full h-full object-contain"
+          />
         </div>
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold tracking-wide mb-1.5">
