@@ -18,33 +18,7 @@ export async function POST(req: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // 1. Attempt Google Drive if configured
-    if (isDriveConfigured()) {
-      try {
-        const result = await uploadFileToDrive({
-          fileName: file.name,
-          mimeType: file.type || 'application/octet-stream',
-          buffer,
-          plotNumber,
-          category,
-        });
-
-        return NextResponse.json({
-          success: true,
-          fileId: result.fileId,
-          webViewLink: result.webViewLink,
-          folderPath: result.folderPath,
-          isMock: false,
-          storageProvider: 'google_drive',
-        });
-      } catch (driveErr: unknown) {
-        const msg = driveErr instanceof Error ? driveErr.message : String(driveErr);
-        console.warn('Google Drive rejected upload (storage quota or permissions). Falling back to Supabase:', msg);
-        // Fall through to Supabase Storage
-      }
-    }
-
-    // 2. Seamless Supabase Storage Fallback (100% reliable, free 1GB storage, no service account quota limits)
+    // 1. Supabase Storage (Primary - direct, fast, reliable, zero service account quota restrictions)
     if (isSupabaseConfigured && supabase) {
       try {
         const bucketName = 'documents';
@@ -79,6 +53,31 @@ export async function POST(req: NextRequest) {
         }
       } catch (sbErr) {
         console.warn('Supabase storage exception:', sbErr);
+      }
+    }
+
+    // 2. Google Drive Fallback
+    if (isDriveConfigured()) {
+      try {
+        const result = await uploadFileToDrive({
+          fileName: file.name,
+          mimeType: file.type || 'application/octet-stream',
+          buffer,
+          plotNumber,
+          category,
+        });
+
+        return NextResponse.json({
+          success: true,
+          fileId: result.fileId,
+          webViewLink: result.webViewLink,
+          folderPath: result.folderPath,
+          isMock: false,
+          storageProvider: 'google_drive',
+        });
+      } catch (driveErr: unknown) {
+        const msg = driveErr instanceof Error ? driveErr.message : String(driveErr);
+        console.warn('Google Drive rejected upload:', msg);
       }
     }
 
