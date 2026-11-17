@@ -1,69 +1,344 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { setClientSession } from '@/lib/session';
+import {
+  Trees,
+  Building2,
+  ShieldCheck,
+  User,
+  Phone,
+  Lock,
+  ArrowRight,
+  Shield,
+  KeyRound,
+} from 'lucide-react';
+
+export default function HomePage() {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<'owner' | 'admin'>('owner');
+
+  // Owner Form State
+  const [plotNumber, setPlotNumber] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [ownerLoading, setOwnerLoading] = useState(false);
+  const [ownerError, setOwnerError] = useState<string | null>(null);
+
+  // Admin Form State
+  const [passcode, setPasscode] = useState('');
+  const [adminName, setAdminName] = useState('MC Executive');
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [adminError, setAdminError] = useState<string | null>(null);
+
+  // Quick Demo Pre-sets for fast testing
+  const samplePlots = [
+    { plot: '42', name: 'Anand Kumar Hegde', phone: '9448123456', desc: 'Pending Checklist' },
+    { plot: '27', name: 'Rajesh Venkatraman', phone: '9880198801', desc: 'Ready for Refund' },
+    { plot: '58', name: 'Meenakshi Iyer', phone: '9900223344', desc: 'Re-Measurement' },
+    { plot: '12', name: 'Kavitha Sundaram', phone: '9845012345', desc: 'New Vacant Plot' },
+  ];
+
+  const handleSelectSample = (s: (typeof samplePlots)[0]) => {
+    setPlotNumber(s.plot);
+    setOwnerName(s.name);
+    setPhone(s.phone);
+    setOwnerError(null);
+  };
+
+  const handleOwnerLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOwnerError(null);
+
+    if (!plotNumber.trim() || !ownerName.trim() || !phone.trim()) {
+      setOwnerError('Please enter Plot Number, Your Name, and Phone Number.');
+      return;
+    }
+
+    setOwnerLoading(true);
+    try {
+      const res = await fetch('/api/auth/owner-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plotNumber, ownerName, phone }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Login failed');
+
+      setClientSession({
+        role: 'owner',
+        plotNumber: plotNumber.trim(),
+        ownerName: ownerName.trim(),
+        phone: phone.trim(),
+      });
+
+      router.push('/owner/dashboard');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Login failed';
+      setOwnerError(msg);
+    } finally {
+      setOwnerLoading(false);
+    }
+  };
+
+  const handleAdminLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminError(null);
+    setAdminLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/admin-login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passcode, name: adminName }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Invalid passcode');
+
+      setClientSession({
+        role: 'admin',
+        name: adminName,
+      });
+
+      router.push('/admin/dashboard');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Invalid Admin Passcode';
+      setAdminError(msg);
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
+    <div className="max-w-md mx-auto space-y-6 pt-2 sm:pt-6 animate-in fade-in duration-200">
+      {/* Brand Header */}
+      <div className="text-center space-y-2">
+        <div className="w-14 h-14 rounded-2xl bg-emerald-700 text-white flex items-center justify-center mx-auto shadow-md shadow-emerald-700/20">
+          <Trees className="w-8 h-8" />
+        </div>
+        <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-bold tracking-wide mb-1.5">
+            AEOWA Resident Services Desk
+          </div>
+          <h1 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
+            Anugraha Evergreen Layout
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-xs sm:text-sm text-gray-600 max-w-sm mx-auto mt-2 leading-relaxed">
+            Apply for Construction &amp; Re-Measurement NOCs, upload sale deeds, request plot amalgamation, and track your Association clearance status in one place.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      </div>
+
+      {/* Login Portal Card */}
+      <div className="bg-white rounded-3xl border border-emerald-100 shadow-md overflow-hidden">
+        {/* Tab Toggle: Owner Login vs Admin Login */}
+        <div className="grid grid-cols-2 p-1.5 bg-gray-100/80 m-3 rounded-2xl gap-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('owner')}
+            className={`py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 ${
+              activeTab === 'owner'
+                ? 'bg-white text-emerald-900 shadow-xs'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
           >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            <Building2 className="w-4 h-4 text-emerald-700" />
+            <span>Plot Owner Login</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('admin')}
+            className={`py-2 text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 ${
+              activeTab === 'admin'
+                ? 'bg-white text-emerald-900 shadow-xs'
+                : 'text-gray-500 hover:text-gray-900'
+            }`}
           >
-            Documentation
-          </a>
+            <ShieldCheck className="w-4 h-4 text-emerald-700" />
+            <span>Association Admin</span>
+          </button>
         </div>
-      </main>
+
+        {/* OWNER LOGIN TAB */}
+        {activeTab === 'owner' && (
+          <div className="p-5 sm:p-6 space-y-4">
+            <div className="space-y-1">
+              <h2 className="text-sm font-bold text-gray-900">Resident / Plot Owner Access</h2>
+              <p className="text-xs text-gray-500">
+                Enter your plot number and contact details to access your dashboard.
+              </p>
+            </div>
+
+            {ownerError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                {ownerError}
+              </div>
+            )}
+
+            <form onSubmit={handleOwnerLogin} className="space-y-3.5">
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Plot Number *
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="e.g. 42 or 108"
+                    value={plotNumber}
+                    onChange={(e) => setPlotNumber(e.target.value)}
+                    className="w-full text-xs sm:text-sm px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-emerald-600 focus:bg-white transition"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Owner Full Name *
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="e.g. Anand Kumar Hegde"
+                    value={ownerName}
+                    onChange={(e) => setOwnerName(e.target.value)}
+                    className="w-full text-xs sm:text-sm px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-emerald-600 focus:bg-white transition"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Registered Phone Number *
+                </label>
+                <div className="relative">
+                  <input
+                    type="tel"
+                    placeholder="10-digit mobile number"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full text-xs sm:text-sm px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-emerald-600 focus:bg-white transition"
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={ownerLoading}
+                className="w-full py-3 bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer mt-2"
+              >
+                <span>{ownerLoading ? 'Signing In...' : 'Continue to Plot Dashboard'}</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </form>
+
+            {/* Quick Fill Test Plots */}
+            <div className="pt-3 border-t border-gray-100">
+              <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">
+                Quick-Test Presets (Tap to Autofill):
+              </span>
+              <div className="grid grid-cols-2 gap-2">
+                {samplePlots.map((sp) => (
+                  <button
+                    key={sp.plot}
+                    type="button"
+                    onClick={() => handleSelectSample(sp)}
+                    className="p-2 text-left rounded-lg border border-gray-200 bg-gray-50 hover:bg-emerald-50 hover:border-emerald-300 transition text-[11px] cursor-pointer"
+                  >
+                    <div className="font-bold text-gray-900">Plot #{sp.plot}</div>
+                    <div className="text-gray-500 truncate">{sp.name}</div>
+                    <div className="text-emerald-700 font-medium text-[10px] mt-0.5">{sp.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Strict Privacy Notice */}
+            <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200 flex items-start gap-2">
+              <Shield className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-emerald-900 leading-tight">
+                <strong>Strict Privacy Rule:</strong> Owners monitor status badges and raise NOCs.
+                All uploaded documents and issued certificates remain strictly confidential for
+                Association Admin review.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ADMIN LOGIN TAB */}
+        {activeTab === 'admin' && (
+          <div className="p-5 sm:p-6 space-y-4">
+            <div className="space-y-1">
+              <h2 className="text-sm font-bold text-gray-900">Association Admin Sign-In</h2>
+              <p className="text-xs text-gray-500">
+                Management Committee access for checklist verifications, deposit tracking & PDF issuance.
+              </p>
+            </div>
+
+            {adminError && (
+              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                {adminError}
+              </div>
+            )}
+
+            <form onSubmit={handleAdminLogin} className="space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Admin Passcode *
+                </label>
+                <input
+                  type="password"
+                  placeholder="Enter Passcode"
+                  value={passcode}
+                  onChange={(e) => setPasscode(e.target.value)}
+                  className="w-full text-xs sm:text-sm px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-emerald-600 focus:bg-white transition font-mono"
+                  required
+                />
+                <p className="text-[11px] text-gray-400 mt-1">
+                  Default development passcode:{' '}
+                  <code className="text-emerald-700 font-bold">evergreen2026</code>
+                </p>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Designation / Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Secretary / Treasurer"
+                  value={adminName}
+                  onChange={(e) => setAdminName(e.target.value)}
+                  className="w-full text-xs sm:text-sm px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-emerald-600 focus:bg-white transition"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={adminLoading}
+                className="w-full py-3 bg-emerald-800 hover:bg-emerald-900 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition flex items-center justify-center gap-2 cursor-pointer mt-2"
+              >
+                <Lock className="w-4 h-4" />
+                <span>{adminLoading ? 'Verifying...' : 'Unlock Admin Portal'}</span>
+              </button>
+            </form>
+
+            <div className="p-3 rounded-xl bg-gray-50 border border-gray-200 text-[11px] text-gray-500 flex items-center gap-2">
+              <KeyRound className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>
+                Configured via <code className="font-mono text-gray-700">ADMIN_PASSCODE</code> in{' '}
+                <code className="font-mono text-gray-700">.env.local</code>.
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
