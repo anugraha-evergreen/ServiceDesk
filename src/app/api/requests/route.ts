@@ -35,6 +35,9 @@ export async function POST(req: NextRequest) {
       type,
       status: 'submitted',
       rulesAcceptedAt: body.rulesAcceptedAt,
+      ownerContactName: body.ownerContactName,
+      ownerContactPhone: body.ownerContactPhone,
+      contractorName: body.contractorName,
       contractorPhone: body.contractorPhone,
       supervisorPhone: body.supervisorPhone,
       emergencyPhone: body.emergencyPhone,
@@ -70,6 +73,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, request: created });
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Failed to create request';
+    console.error('POST /api/requests error:', e);
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }

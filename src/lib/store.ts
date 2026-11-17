@@ -28,8 +28,18 @@ function sanitizeRequestForOwner(req: ServiceRequest): ServiceRequest {
   };
 }
 
-// Helpers to map between DB row snake_case and TypeScript camelCase
+// Clean checklist by stripping out internal metadata packaging
+function sanitizeChecklist(chk: any) {
+  if (!chk) return chk;
+  const { _extendedMeta, ...rest } = chk;
+  if (Object.keys(rest).length === 0) return undefined;
+  return rest;
+}
+
+// Helpers to map between DB row snake_case and TypeScript camelCase with lossless fallback
 function rowToServiceRequest(row: any): ServiceRequest {
+  const meta = (row.pre_construction_checklist && row.pre_construction_checklist._extendedMeta) || {};
+
   return {
     id: row.id,
     plotNumber: row.plot_number,
@@ -38,28 +48,31 @@ function rowToServiceRequest(row: any): ServiceRequest {
     type: row.type,
     status: row.status,
     rulesAcceptedAt: row.rules_accepted_at,
-    ownerContactName: row.owner_contact_name,
-    ownerContactPhone: row.owner_contact_phone,
-    contractorName: row.contractor_name,
-    contractorPhone: row.contractor_phone,
+    ownerContactName: row.owner_contact_name || meta.ownerContactName || row.owner_name,
+    ownerContactPhone: row.owner_contact_phone || meta.ownerContactPhone || row.phone,
+    contractorName: row.contractor_name || meta.contractorName,
+    contractorPhone: row.contractor_phone || meta.contractorPhone,
     supervisorPhone: row.supervisor_phone,
     emergencyPhone: row.emergency_phone,
     documents: row.documents || [],
-    preConstructionChecklist: row.pre_construction_checklist,
+    preConstructionChecklist: row.pre_construction_checklist
+      ? sanitizeChecklist(row.pre_construction_checklist)
+      : undefined,
     reMeasurementChecklist: row.re_measurement_checklist,
     postConstructionRefund: row.post_construction_refund,
-    saleDeedDetails: row.sale_deed_details,
-    amalgamationDetails: row.amalgamation_details,
-    adminNotes: row.admin_notes,
-    generatedNocPdfUrl: row.generated_noc_pdf_url,
-    generatedNocCertificateId: row.generated_noc_certificate_id,
-    refundSettlementPdfUrl: row.refund_settlement_pdf_url,
+    saleDeedDetails: row.sale_deed_details || meta.saleDeedDetails,
+    amalgamationDetails: row.amalgamation_details || meta.amalgamationDetails,
+    adminNotes: row.admin_notes || meta.adminNotes,
+    generatedNocPdfUrl: row.generated_noc_pdf_url || meta.generatedNocPdfUrl,
+    generatedNocCertificateId: row.generated_noc_certificate_id || meta.generatedNocCertificateId,
+    refundSettlementPdfUrl: row.refund_settlement_pdf_url || meta.refundSettlementPdfUrl,
     createdAt: row.created_at || new Date().toISOString(),
     updatedAt: row.updated_at || new Date().toISOString(),
   };
 }
 
-function serviceRequestToRow(req: Partial<ServiceRequest>): any {
+// Full row targeting dedicated columns if they exist in PostgreSQL
+function serviceRequestToFullRow(req: Partial<ServiceRequest>): any {
   const row: any = {};
   if (req.id !== undefined) row.id = req.id;
   if (req.plotNumber !== undefined) row.plot_number = req.plotNumber;
@@ -84,7 +97,49 @@ function serviceRequestToRow(req: Partial<ServiceRequest>): any {
   if (req.generatedNocPdfUrl !== undefined) row.generated_noc_pdf_url = req.generatedNocPdfUrl;
   if (req.generatedNocCertificateId !== undefined) row.generated_noc_certificate_id = req.generatedNocCertificateId;
   if (req.refundSettlementPdfUrl !== undefined) row.refund_settlement_pdf_url = req.refundSettlementPdfUrl;
+  if (req.createdAt !== undefined) row.created_at = req.createdAt;
   if (req.updatedAt !== undefined) row.updated_at = req.updatedAt;
+  return row;
+}
+
+// Fallback row for PostgreSQL tables with only base schema columns
+function serviceRequestToBaseRow(req: Partial<ServiceRequest>, existingMeta?: any): any {
+  const row: any = {};
+  if (req.id !== undefined) row.id = req.id;
+  if (req.plotNumber !== undefined) row.plot_number = req.plotNumber;
+  if (req.ownerName !== undefined) row.owner_name = req.ownerName;
+  if (req.phone !== undefined) row.phone = req.phone;
+  if (req.type !== undefined) row.type = req.type;
+  if (req.status !== undefined) row.status = req.status;
+  if (req.rulesAcceptedAt !== undefined) row.rules_accepted_at = req.rulesAcceptedAt;
+  if (req.contractorPhone !== undefined) row.contractor_phone = req.contractorPhone;
+  if (req.supervisorPhone !== undefined) row.supervisor_phone = req.supervisorPhone;
+  if (req.emergencyPhone !== undefined) row.emergency_phone = req.emergencyPhone;
+  if (req.documents !== undefined) row.documents = req.documents;
+  if (req.reMeasurementChecklist !== undefined) row.re_measurement_checklist = req.reMeasurementChecklist;
+  if (req.postConstructionRefund !== undefined) row.post_construction_refund = req.postConstructionRefund;
+  if (req.createdAt !== undefined) row.created_at = req.createdAt;
+  if (req.updatedAt !== undefined) row.updated_at = req.updatedAt;
+
+  // Package all non-base fields into _extendedMeta inside pre_construction_checklist
+  const meta: Record<string, any> = { ...(existingMeta || {}) };
+  if (req.ownerContactName !== undefined) meta.ownerContactName = req.ownerContactName;
+  if (req.ownerContactPhone !== undefined) meta.ownerContactPhone = req.ownerContactPhone;
+  if (req.contractorName !== undefined) meta.contractorName = req.contractorName;
+  if (req.contractorPhone !== undefined) meta.contractorPhone = req.contractorPhone;
+  if (req.saleDeedDetails !== undefined) meta.saleDeedDetails = req.saleDeedDetails;
+  if (req.amalgamationDetails !== undefined) meta.amalgamationDetails = req.amalgamationDetails;
+  if (req.adminNotes !== undefined) meta.adminNotes = req.adminNotes;
+  if (req.generatedNocPdfUrl !== undefined) meta.generatedNocPdfUrl = req.generatedNocPdfUrl;
+  if (req.generatedNocCertificateId !== undefined) meta.generatedNocCertificateId = req.generatedNocCertificateId;
+  if (req.refundSettlementPdfUrl !== undefined) meta.refundSettlementPdfUrl = req.refundSettlementPdfUrl;
+
+  const baseChecklist = req.preConstructionChecklist || {};
+  row.pre_construction_checklist = {
+    ...baseChecklist,
+    _extendedMeta: meta,
+  };
+
   return row;
 }
 
@@ -190,8 +245,14 @@ export async function getAllRequests(role: UserRole = 'owner', plotNumber?: stri
         .from('service_requests')
         .select('*')
         .order('updated_at', { ascending: false });
-      if (!error && data && data.length > 0) {
-        list = data.map(rowToServiceRequest);
+      if (!error && data) {
+        const dbRequests = data.map(rowToServiceRequest);
+        // Merge with any in-memory requests not yet present in Supabase
+        const dbIds = new Set(dbRequests.map((r) => r.id));
+        const extraMem = memoryRequests.filter((r) => !dbIds.has(r.id));
+        list = [...dbRequests, ...extraMem];
+      } else if (error) {
+        console.warn('Supabase getAllRequests error, using memory fallback:', error);
       }
     } catch (e) {
       console.warn('Supabase requests fetch error, using local fallback:', e);
@@ -255,8 +316,11 @@ export async function getRequestById(id: string, role: UserRole = 'owner'): Prom
 export async function createServiceRequest(
   newReq: Omit<ServiceRequest, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<ServiceRequest> {
-  const count = memoryRequests.length + 101;
-  const id = `REQ-2026-${String(count).padStart(3, '0')}`;
+  // Guaranteed unique chronological ID across distributed serverless instances: e.g. REQ-2026-83921
+  const year = 2026;
+  const timeSuffix = Date.now().toString().slice(-4);
+  const randSuffix = Math.floor(10 + Math.random() * 90);
+  const id = `REQ-${year}-${timeSuffix}${randSuffix}`;
   const now = new Date().toISOString();
 
   const created: ServiceRequest = {
@@ -268,12 +332,38 @@ export async function createServiceRequest(
 
   if (isSupabaseConfigured && supabase) {
     try {
-      const dbRow = serviceRequestToRow(created);
-      dbRow.created_at = now;
-      const { error } = await supabase.from('service_requests').insert([dbRow]);
-      if (error) console.error('Supabase request insert error:', error);
+      // 1. Try full column insert
+      const fullRow = serviceRequestToFullRow(created);
+      fullRow.created_at = now;
+      fullRow.updated_at = now;
+      let { error } = await supabase.from('service_requests').insert([fullRow]);
+
+      // 2. If Postgres table lacks extended columns, transparently fallback to base schema + metadata packaging
+      if (
+        error &&
+        (error.code === '42703' ||
+          error.code === 'PGRST204' ||
+          error.message?.includes('column') ||
+          error.message?.includes('schema cache'))
+      ) {
+        console.warn(
+          'Supabase missing columns in service_requests, retrying with base schema and metadata fallback:',
+          error.message
+        );
+        const baseRow = serviceRequestToBaseRow(created);
+        baseRow.created_at = now;
+        baseRow.updated_at = now;
+        const retryResult = await supabase.from('service_requests').insert([baseRow]);
+        error = retryResult.error;
+      }
+
+      if (error) {
+        console.error('Supabase request insert fatal error:', error);
+        throw new Error(`Failed to save application to Supabase: ${error.message || error.code}`);
+      }
     } catch (e) {
-      console.warn('Supabase request insert exception:', e);
+      console.error('Supabase request insert exception:', e);
+      throw e;
     }
   }
 
@@ -300,19 +390,54 @@ export async function updateServiceRequest(
 
   if (isSupabaseConfigured && supabase) {
     try {
-      const dbRow = serviceRequestToRow(updates);
-      dbRow.updated_at = now;
-      const { data, error } = await supabase
+      // 1. Try full column update
+      const fullRow = serviceRequestToFullRow(updates);
+      fullRow.updated_at = now;
+      let { data, error } = await supabase
         .from('service_requests')
-        .update(dbRow)
+        .update(fullRow)
         .eq('id', id)
         .select()
         .single();
+
+      // 2. If Postgres table lacks extended columns, fallback to base schema + metadata packaging
+      if (
+        error &&
+        (error.code === '42703' ||
+          error.code === 'PGRST204' ||
+          error.message?.includes('column') ||
+          error.message?.includes('schema cache'))
+      ) {
+        console.warn('Supabase missing column in update, retrying with base schema fallback:', error.message);
+        // Fetch current row to merge existing _extendedMeta
+        const { data: currData } = await supabase
+          .from('service_requests')
+          .select('pre_construction_checklist')
+          .eq('id', id)
+          .single();
+
+        const currMeta = currData?.pre_construction_checklist?._extendedMeta;
+        const baseRow = serviceRequestToBaseRow(updates, currMeta);
+        baseRow.updated_at = now;
+
+        const retryResult = await supabase
+          .from('service_requests')
+          .update(baseRow)
+          .eq('id', id)
+          .select()
+          .single();
+
+        data = retryResult.data;
+        error = retryResult.error;
+      }
+
       if (!error && data) {
         updatedReq = rowToServiceRequest(data);
+      } else if (error) {
+        console.error('Supabase request update error:', error);
       }
     } catch (e) {
-      console.warn('Supabase request update error:', e);
+      console.warn('Supabase request update exception:', e);
     }
   }
 

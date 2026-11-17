@@ -90,7 +90,14 @@ CREATE POLICY "Allow public storage select"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'documents');
 
-CREATE POLICY "Allow public storage update"
-ON storage.objects FOR UPDATE
-USING (bucket_id = 'documents');
+-- 8. Add extended metadata columns to service_requests (Idempotent: safe to run on existing tables)
+ALTER TABLE public.service_requests ADD COLUMN IF NOT EXISTS owner_contact_name TEXT;
+ALTER TABLE public.service_requests ADD COLUMN IF NOT EXISTS owner_contact_phone TEXT;
+ALTER TABLE public.service_requests ADD COLUMN IF NOT EXISTS contractor_name TEXT;
+ALTER TABLE public.service_requests ADD COLUMN IF NOT EXISTS sale_deed_details JSONB;
+ALTER TABLE public.service_requests ADD COLUMN IF NOT EXISTS amalgamation_details JSONB;
+ALTER TABLE public.service_requests ADD COLUMN IF NOT EXISTS admin_notes TEXT;
+ALTER TABLE public.service_requests ADD COLUMN IF NOT EXISTS generated_noc_pdf_url TEXT;
+ALTER TABLE public.service_requests ADD COLUMN IF NOT EXISTS generated_noc_certificate_id TEXT;
+ALTER TABLE public.service_requests ADD COLUMN IF NOT EXISTS refund_settlement_pdf_url TEXT;
 
