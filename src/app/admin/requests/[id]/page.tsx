@@ -379,7 +379,11 @@ export default function AdminRequestDetailPage({
                         className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 hover:underline pt-0.5"
                       >
                         <ExternalLink className="w-3 h-3" />
-                        <span>Open in Google Drive</span>
+                        <span>
+                          {doc.driveWebViewLink.includes('drive.google.com')
+                            ? 'Open in Google Drive'
+                            : 'View Uploaded Document'}
+                        </span>
                       </a>
                     )}
                   </div>
