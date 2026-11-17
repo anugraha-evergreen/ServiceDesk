@@ -7,6 +7,11 @@ export const metadata: Metadata = {
   title: 'Anugraha Evergreen Owners Welfare Association (AEOWA)',
   description:
     'Portal for plot-specific NOCs, construction compliance checklists, security deposits, and document management.',
+  icons: {
+    icon: '/images/aeowa-logo.png',
+    shortcut: '/images/aeowa-logo.png',
+    apple: '/images/aeowa-logo.png',
+  },
 };
 
 export default function RootLayout({
