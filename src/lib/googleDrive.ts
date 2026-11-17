@@ -83,21 +83,38 @@ function getDriveConfig(): DriveConfig {
 }
 
 export function isDriveConfigured(): boolean {
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN?.trim();
+  if (clientId && clientSecret && refreshToken) return true;
+
   const { clientEmail, privateKey } = getDriveConfig();
   return Boolean(clientEmail && privateKey);
 }
 
 function getDriveAuth() {
-  const { clientEmail, privateKey } = getDriveConfig();
-  if (!clientEmail || !privateKey) {
-    throw new Error('Google Drive Service Account is not configured in environment.');
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN?.trim();
+
+  // 1. Primary: Personal Gmail OAuth2 User Credentials (uses your personal 15GB quota!)
+  if (clientId && clientSecret && refreshToken) {
+    const oauth2Client = new google.auth.OAuth2(clientId, clientSecret);
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    return oauth2Client;
   }
 
-  return new google.auth.JWT({
-    email: clientEmail,
-    key: privateKey,
-    scopes: ['https://www.googleapis.com/auth/drive'],
-  });
+  // 2. Secondary: Service Account (only for Workspace Shared Drives)
+  const { clientEmail, privateKey } = getDriveConfig();
+  if (clientEmail && privateKey) {
+    return new google.auth.JWT({
+      email: clientEmail,
+      key: privateKey,
+      scopes: ['https://www.googleapis.com/auth/drive'],
+    });
+  }
+
+  throw new Error('Google Drive credentials (OAuth2 or Service Account) are not configured in environment.');
 }
 
 function getDriveClient() {
