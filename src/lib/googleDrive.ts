@@ -8,15 +8,76 @@ interface DriveConfig {
   rootFolderId?: string;
 }
 
-function getDriveConfig(): DriveConfig {
-  const clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  let privateKey = process.env.GOOGLE_PRIVATE_KEY;
-  if (privateKey) {
-    // Replace escaped newlines if passed in single-line env var
-    privateKey = privateKey.replace(/\\n/g, '\n');
-  }
-  const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID;
+/**
+ * Robust cleaner for Google Service Account private key PEM strings.
+ * Fixes OpenSSL 3 error: "error:1E08010C:DECODER routines::unsupported"
+ * Handles Vercel env formatting, escaped newlines, raw JSON paste, and outer quotes.
+ */
+function cleanPrivateKey(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  let str = raw.trim();
 
+  // 1. If user pasted the entire service account JSON into GOOGLE_PRIVATE_KEY
+  if (str.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(str);
+      if (parsed.private_key) str = parsed.private_key.trim();
+    } catch {
+      // not valid JSON, proceed as string
+    }
+  }
+
+  // 2. Strip surrounding single or double quotes
+  while (
+    (str.startsWith('"') && str.endsWith('"')) ||
+    (str.startsWith("'") && str.endsWith("'"))
+  ) {
+    str = str.slice(1, -1).trim();
+  }
+
+  // 3. Unescape escaped double quotes
+  str = str.replace(/\\"/g, '"');
+
+  // 4. Normalize all escaped newlines (\n, \\n, \r) to real newlines
+  str = str.replace(/\\\\n/g, '\n').replace(/\\n/g, '\n').replace(/\r/g, '');
+
+  // 5. Ensure valid PEM header and footer
+  if (!str.includes('-----BEGIN PRIVATE KEY-----') && !str.includes('-----BEGIN RSA PRIVATE KEY-----')) {
+    str = `-----BEGIN PRIVATE KEY-----\n${str}\n-----END PRIVATE KEY-----`;
+  }
+
+  // 6. Ensure real newlines after header and before footer
+  str = str.replace(/(-----BEGIN [A-Z ]+-----)/g, '$1\n');
+  str = str.replace(/(-----END [A-Z ]+-----)/g, '\n$1');
+
+  // 7. Collapse consecutive duplicate newlines
+  str = str.replace(/\n{2,}/g, '\n').trim() + '\n';
+
+  return str;
+}
+
+function getDriveConfig(): DriveConfig {
+  let clientEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL?.trim();
+  let rawKey = process.env.GOOGLE_PRIVATE_KEY?.trim();
+  const rootFolderId = process.env.GOOGLE_DRIVE_ROOT_FOLDER_ID?.trim();
+
+  // If user pasted the full service account JSON into GOOGLE_PRIVATE_KEY or GOOGLE_SERVICE_ACCOUNT_EMAIL
+  if (rawKey && rawKey.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(rawKey);
+      if (parsed.private_key) rawKey = parsed.private_key;
+      if (!clientEmail && parsed.client_email) clientEmail = parsed.client_email;
+    } catch {}
+  }
+  if (clientEmail && clientEmail.startsWith('{')) {
+    try {
+      const parsed = JSON.parse(clientEmail);
+      if (parsed.client_email) clientEmail = parsed.client_email;
+      if (!rawKey && parsed.private_key) rawKey = parsed.private_key;
+    } catch {}
+  }
+
+  const privateKey = cleanPrivateKey(rawKey);
   return { clientEmail, privateKey, rootFolderId };
 }
 
@@ -25,18 +86,21 @@ export function isDriveConfigured(): boolean {
   return Boolean(clientEmail && privateKey);
 }
 
-function getDriveClient() {
+function getDriveAuth() {
   const { clientEmail, privateKey } = getDriveConfig();
   if (!clientEmail || !privateKey) {
     throw new Error('Google Drive Service Account is not configured in environment.');
   }
 
-  const auth = new google.auth.JWT({
+  return new google.auth.JWT({
     email: clientEmail,
     key: privateKey,
     scopes: ['https://www.googleapis.com/auth/drive'],
   });
+}
 
+function getDriveClient() {
+  const auth = getDriveAuth();
   return google.drive({ version: 'v3', auth });
 }
 
@@ -125,8 +189,8 @@ export async function initiateResumableUpload(params: {
   const { folderId, folderPath } = await getTargetFolderId(params.plotNumber, params.category);
 
   // Obtain access token
-  const client = drive.context._options.auth as InstanceType<typeof google.auth.JWT>;
-  const token = await client.getAccessToken();
+  const auth = getDriveAuth();
+  const token = await auth.getAccessToken();
 
   if (!token.token) {
     throw new Error('Failed to retrieve Google Auth token');
