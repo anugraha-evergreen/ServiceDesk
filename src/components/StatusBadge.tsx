@@ -20,7 +20,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, size = 'md' })
       icon: <Clock className="w-3.5 h-3.5" />,
     },
     under_review: {
-      label: 'Under MC Review',
+      label: 'Under Review',
       bg: 'bg-amber-50',
       text: 'text-amber-800',
       border: 'border-amber-200',

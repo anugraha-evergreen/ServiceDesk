@@ -173,38 +173,37 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* DASHBOARD SUMMARY: WHAT'S DONE vs WHAT'S NOT DONE (Grouped correctly per requirement) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* GROUP 1: PENDING ACTION (WHAT'S NOT DONE YET) */}
-        <div className="bg-amber-50/50 rounded-2xl p-4 sm:p-5 border border-amber-200/80 space-y-3">
+      {/* DASHBOARD SUMMARY: 3-CARD BALANCED METRICS GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* CARD 1: PENDING ACTION */}
+        <div className="bg-amber-50/50 rounded-2xl p-4 sm:p-5 border border-amber-200/80 space-y-3 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-extrabold text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
               <Clock className="w-4 h-4 text-amber-700" />
-              <span>Pending Action (What&apos;s Not Done Yet)</span>
+              <span>Pending Action</span>
             </h2>
-            {/* Single line pill with whitespace-nowrap so it NEVER breaks onto 2 lines */}
             <span className="whitespace-nowrap inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-amber-200 text-amber-900 font-bold text-xs shrink-0">
               {totalPendingCount} Pending
             </span>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
               onClick={() => setActiveFilter('pending')}
               className="p-3 bg-white rounded-xl border border-amber-200 hover:border-amber-400 hover:shadow-xs transition text-left cursor-pointer flex flex-col justify-between"
             >
               <div>
-                <span className="text-[11px] font-bold text-amber-900 block flex items-center gap-1">
-                  <HardHat className="w-3.5 h-3.5 text-amber-700" />
-                  Construction Checklists
+                <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1">
+                  <HardHat className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                  <span className="truncate">Construction</span>
                 </span>
                 <span className="text-xl font-black text-amber-700 mt-1 block font-mono">
                   {pendingConstructionCount}
                 </span>
               </div>
-              <span className="text-[10px] text-amber-800 font-medium mt-1">
-                Awaiting checklist &amp; deposit verification
+              <span className="text-[10px] text-amber-800 font-medium mt-1 leading-tight line-clamp-1">
+                Awaiting checklist &amp; deposit
               </span>
             </button>
 
@@ -214,75 +213,105 @@ export default function AdminDashboardPage() {
               className="p-3 bg-white rounded-xl border border-amber-200 hover:border-amber-400 hover:shadow-xs transition text-left cursor-pointer flex flex-col justify-between"
             >
               <div>
-                <span className="text-[11px] font-bold text-amber-900 block flex items-center gap-1">
-                  <Layers className="w-3.5 h-3.5 text-amber-700" />
-                  Other Requests
+                <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1">
+                  <Layers className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                  <span className="truncate">Other</span>
                 </span>
                 <span className="text-xl font-black text-amber-700 mt-1 block font-mono">
                   {pendingOtherCount}
                 </span>
               </div>
-              <span className="text-[10px] text-amber-800 font-medium mt-1">
-                Surveys, deeds &amp; amalgamations
+              <span className="text-[10px] text-amber-800 font-medium mt-1 leading-tight line-clamp-1">
+                Surveys &amp; deeds
               </span>
             </button>
           </div>
         </div>
 
-        {/* GROUP 2: WHAT'S DONE & FINANCIALS (APPROVED & SETTLED) */}
-        <div className="bg-emerald-50/50 rounded-2xl p-4 sm:p-5 border border-emerald-200/80 space-y-3">
+        {/* CARD 2: APPROVED & SETTLED */}
+        <div className="bg-emerald-50/50 rounded-2xl p-4 sm:p-5 border border-emerald-200/80 space-y-3 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <h2 className="text-xs font-extrabold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
               <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-              <span>Approved &amp; Settled (What&apos;s Done)</span>
+              <span>Approved &amp; Settled</span>
             </h2>
             <span className="whitespace-nowrap inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-200 text-emerald-900 font-bold text-xs shrink-0">
-              {approvedCount + completedCount} Done
+              {approvedCount + completedCount} Total
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             <button
               type="button"
               onClick={() => setActiveFilter('approved')}
-              className="p-3 bg-white rounded-xl border border-emerald-200 hover:border-emerald-400 hover:shadow-xs transition text-left cursor-pointer"
+              className="p-3 bg-white rounded-xl border border-emerald-200 hover:border-emerald-400 hover:shadow-xs transition text-left cursor-pointer flex flex-col justify-between"
             >
-              <span className="text-[11px] font-bold text-emerald-900 block">
-                Approved NOCs
+              <div>
+                <span className="text-[11px] font-bold text-emerald-900 block truncate">
+                  Approved NOCs
+                </span>
+                <span className="text-xl font-black text-emerald-700 mt-1 block font-mono">
+                  {approvedCount}
+                </span>
+              </div>
+              <span className="text-[10px] text-emerald-600 font-medium mt-1">
+                Work active on site
               </span>
-              <span className="text-xl font-black text-emerald-700 mt-1 block font-mono">
-                {approvedCount}
-              </span>
-              <span className="text-[10px] text-emerald-600">Work active</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveFilter('completed')}
-              className="p-3 bg-white rounded-xl border border-emerald-200 hover:border-emerald-400 hover:shadow-xs transition text-left cursor-pointer"
+              className="p-3 bg-white rounded-xl border border-emerald-200 hover:border-emerald-400 hover:shadow-xs transition text-left cursor-pointer flex flex-col justify-between"
             >
-              <span className="text-[11px] font-bold text-blue-900 block">
-                Completed
+              <div>
+                <span className="text-[11px] font-bold text-blue-900 block truncate">
+                  Completed
+                </span>
+                <span className="text-xl font-black text-blue-700 mt-1 block font-mono">
+                  {completedCount}
+                </span>
+              </div>
+              <span className="text-[10px] text-blue-600 font-medium mt-1">
+                Refunds settled
               </span>
-              <span className="text-xl font-black text-blue-700 mt-1 block font-mono">
-                {completedCount}
-              </span>
-              <span className="text-[10px] text-blue-600">Refunds settled</span>
             </button>
-
-            <Link
-              href="/admin/refunds"
-              className="p-3 bg-white rounded-xl border border-emerald-200 hover:border-emerald-400 hover:shadow-xs transition text-left block"
-            >
-              <span className="text-[11px] font-bold text-gray-700 block">
-                Escrow Held
-              </span>
-              <span className="text-xl font-black text-gray-900 mt-1 block font-mono">
-                ₹{(totalEscrowDeposits / 1000).toFixed(0)}k
-              </span>
-              <span className="text-[10px] text-gray-500">Security deposits</span>
-            </Link>
           </div>
+        </div>
+
+        {/* CARD 3: SECURITY DEPOSIT ESCROW */}
+        <div className="bg-slate-50/70 rounded-2xl p-4 sm:p-5 border border-slate-200/80 space-y-3 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xs font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+              <Banknote className="w-4 h-4 text-emerald-700" />
+              <span>Security Deposit Escrow</span>
+            </h2>
+            <span className="whitespace-nowrap inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-xs shrink-0">
+              Active Escrow
+            </span>
+          </div>
+
+          <Link
+            href="/admin/refunds"
+            className="p-3 bg-white rounded-xl border border-slate-200 hover:border-emerald-400 hover:shadow-xs transition text-left block group"
+          >
+            <div className="flex items-baseline justify-between">
+              <div>
+                <span className="text-[11px] font-bold text-slate-600 block">
+                  Total Deposits Under Custody
+                </span>
+                <span className="text-xl font-black text-slate-900 mt-1 block font-mono">
+                  ₹{totalEscrowDeposits.toLocaleString('en-IN')}
+                </span>
+              </div>
+              <span className="text-[11px] text-emerald-700 font-semibold group-hover:translate-x-0.5 transition-transform inline-flex items-center gap-0.5">
+                Ledger &rarr;
+              </span>
+            </div>
+            <span className="text-[10px] text-slate-500 font-medium mt-1.5 block">
+              Held in Association custody for active construction plots
+            </span>
+          </Link>
         </div>
       </div>
 

@@ -222,12 +222,12 @@ export const RefundCalculatorModal: React.FC<RefundCalculatorModalProps> = ({
             </div>
           )}
 
-          {/* Section 1: MC Inspection Checklist */}
+          {/* Section 1: Managing Committee Inspection Checklist */}
           <div className="bg-emerald-50/60 rounded-xl p-4 border border-emerald-200 space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-700" />
-                1. Management Committee (MC) Site Inspection
+                1. Managing Committee Site Inspection
               </h3>
               <input
                 type="date"

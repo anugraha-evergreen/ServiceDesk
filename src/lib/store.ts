@@ -4,7 +4,7 @@ import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 // In-memory caching & local fallback
 let memoryPlots: Plot[] = [...INITIAL_PLOTS];
-let memoryRequests: ServiceRequest[] = [...INITIAL_REQUESTS];
+let memoryRequests: ServiceRequest[] = [];
 
 // Ultra-fast memory cache controls (drastically cuts redundant database roundtrips)
 let plotsCacheTime = 0;

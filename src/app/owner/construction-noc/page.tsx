@@ -322,7 +322,7 @@ function ConstructionNocForm() {
                   Delete Application #{editId}?
                 </h3>
                 <p className="text-xs text-gray-600 leading-relaxed">
-                  Are you sure you want to permanently delete this application? All uploaded construction permits, building plans, and tax receipts will be purged from Supabase Storage.
+                  Are you sure you want to permanently delete this application? All uploaded construction permits, building plans, and tax receipts will be purged from storage.
                 </p>
               </div>
             </div>

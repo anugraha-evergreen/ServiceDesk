@@ -55,7 +55,7 @@ export const CONSTRUCTION_RULES: RuleSection[] = [
     title: '6. Rainwater Harvesting & Completion Clearance',
     points: [
       'Rainwater harvesting (RWH) setup with a dedicated groundwater recharge pit of prescribed capacity is mandatory as per layout sustainability norms.',
-      'Upon completion of construction, the Management Committee (MC) will conduct a physical inspection to verify total debris removal, road/drain condition, and RWH installation before processing the ₹20,000 security deposit refund.',
+      'Upon completion of construction, the Managing Committee will conduct a physical inspection to verify total debris removal, road/drain condition, and RWH installation before processing the ₹20,000 security deposit refund.',
     ],
   },
 ];

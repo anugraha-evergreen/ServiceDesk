@@ -187,7 +187,7 @@ export default function AdminRefundsPage() {
 
                   <div className="text-gray-600 space-y-0.5 text-[11px]">
                     <div>
-                      MC Inspection:{' '}
+                      Managing Committee Inspection:{' '}
                       <strong>
                         {ref?.inspectionDate ? `Completed on ${ref.inspectionDate}` : 'Pending Inspection'}
                       </strong>

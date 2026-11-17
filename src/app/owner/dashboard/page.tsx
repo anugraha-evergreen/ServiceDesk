@@ -348,7 +348,7 @@ export default function OwnerDashboardPage() {
                             setDeleteConfirmReq(req);
                           }}
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition cursor-pointer"
-                          title="Withdraw and delete this request and its files from Supabase"
+                          title="Withdraw and delete this request and its files from storage"
                         >
                           <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                           <span>Delete</span>
@@ -391,7 +391,7 @@ export default function OwnerDashboardPage() {
                     </span>
                     <span className="text-[11px] text-gray-400 flex items-center gap-1">
                       <Lock className="w-3 h-3 text-emerald-600" />
-                      Encrypted in Supabase (Admin Access Only)
+                      Encrypted in storage (Admin Access Only)
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
@@ -413,11 +413,11 @@ export default function OwnerDashboardPage() {
                     <span className="font-semibold text-gray-700">Checklist Status:</span>
                     {req.status === 'approved' || req.status === 'completed' ? (
                       <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                        ✓ All 7 Pre-Construction Items Cleared by AEOWA MC
+                        ✓ All 7 Pre-Construction Items Cleared by Association
                       </span>
                     ) : (
                       <span className="text-amber-700">
-                        Pending MC Verification (Deposit UTR, BESCOM, worker toilet & membership)
+                        Pending Managing Committee Verification (Deposit UTR, BESCOM, worker toilet & membership)
                       </span>
                     )}
                   </div>
@@ -441,7 +441,7 @@ export default function OwnerDashboardPage() {
                   Delete Application #{deleteConfirmReq.id}?
                 </h3>
                 <p className="text-xs text-gray-600 leading-relaxed">
-                  Are you sure you want to delete this application for Plot #{deleteConfirmReq.plotNumber}? All <strong>{deleteConfirmReq.documents.length} attached documents</strong> will be permanently purged from Supabase Storage.
+                  Are you sure you want to delete this application for Plot #{deleteConfirmReq.plotNumber}? All <strong>{deleteConfirmReq.documents.length} attached documents</strong> will be permanently purged from storage.
                 </p>
               </div>
             </div>
@@ -450,7 +450,7 @@ export default function OwnerDashboardPage() {
             {deleteConfirmReq.documents && deleteConfirmReq.documents.length > 0 && (
               <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-600 space-y-1.5">
                 <span className="font-semibold text-gray-800 block text-[11px] uppercase tracking-wider">
-                  Files to be deleted from Supabase Storage:
+                  Files to be deleted from storage:
                 </span>
                 <ul className="list-disc list-inside space-y-0.5 text-[11px] text-gray-600">
                   {deleteConfirmReq.documents.map((d) => (

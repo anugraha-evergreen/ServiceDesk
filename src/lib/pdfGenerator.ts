@@ -349,7 +349,7 @@ export async function generateConstructionNocPdfBytes(
   let curY = titleY - 20;
   curY = drawParagraph(
     page1,
-    'This NOC is issued by MC of "ANUGRAHA EVERGREEN LAYOUT OWNERS WELFARE ASSOCIATION" to an Owner towards construction of a Residential House within a "Plot" falling within "ANUGRAHA EVERGREEN LAYOUT".',
+    'This NOC is issued by the Managing Committee of "ANUGRAHA EVERGREEN LAYOUT OWNERS WELFARE ASSOCIATION" to an Owner towards construction of a Residential House within a "Plot" falling within "ANUGRAHA EVERGREEN LAYOUT".',
     {
       x: 38,
       y: curY,
@@ -367,7 +367,7 @@ export async function generateConstructionNocPdfBytes(
   if (options?.blankTemplate) {
     curY = drawParagraph(
       page1,
-      'Basis the request received, we, the MC of "ANUGRAHA EVERGREEN LAYOUT OWNERS WELFARE ASSOCIATION" are pleased to issue a NOC to Mr. / Ms. ____________________________________________________',
+      'Basis the request received, we, the Managing Committee of "ANUGRAHA EVERGREEN LAYOUT OWNERS WELFARE ASSOCIATION" are pleased to issue a NOC to Mr. / Ms. ____________________________________________________',
       {
         x: 38,
         y: curY,
@@ -397,7 +397,7 @@ export async function generateConstructionNocPdfBytes(
 
     curY = drawParagraph(
       page1,
-      `Basis the request received, we, the MC of "ANUGRAHA EVERGREEN LAYOUT OWNERS WELFARE ASSOCIATION" are pleased to issue a NOC to Mr. / Ms. ${ownerName.toUpperCase()}`,
+      `Basis the request received, we, the Managing Committee of "ANUGRAHA EVERGREEN LAYOUT OWNERS WELFARE ASSOCIATION" are pleased to issue a NOC to Mr. / Ms. ${ownerName.toUpperCase()}`,
       {
         x: 38,
         y: curY,
@@ -446,7 +446,7 @@ export async function generateConstructionNocPdfBytes(
   const page1Points = [
     {
       num: '1)',
-      text: 'Any Owner who intends to construct a House in his plot should intimate the MC of Anugraha Evergreen Layout Owners Welfare Association in writing and obtain an official NOC before starting any construction work.',
+      text: 'Any Owner who intends to construct a House in his plot should intimate the Managing Committee of Anugraha Evergreen Layout Owners Welfare Association in writing and obtain an official NOC before starting any construction work.',
     },
     {
       num: '2)',
@@ -454,7 +454,7 @@ export async function generateConstructionNocPdfBytes(
     },
     {
       num: '3)',
-      text: 'Owner should deposit Rs 20,000 (refundable) as a security deposit with the Association. Any damages to layout common areas, roads, culverts, drains, or streetlights will make this deposit forfeited fully or partially. MC decision will be final in this regard.',
+      text: 'Owner should deposit Rs 20,000 (refundable) as a security deposit with the Association. Any damages to layout common areas, roads, culverts, drains, or streetlights will make this deposit forfeited fully or partially. Association decision will be final in this regard.',
     },
     {
       num: '4)',
@@ -482,7 +482,7 @@ export async function generateConstructionNocPdfBytes(
     },
     {
       num: '10)',
-      text: 'Owner should never alter, remove, or damage any Boundary Marking Stones, Survey Pegs, Fences, or Trees of neighboring plots or Common Areas during construction. In case of any compulsion, prior written approval must be obtained from neighboring plot owners and the MC.',
+      text: 'Owner should never alter, remove, or damage any Boundary Marking Stones, Survey Pegs, Fences, or Trees of neighboring plots or Common Areas during construction. In case of any compulsion, prior written approval must be obtained from neighboring plot owners and the Managing Committee.',
     },
   ];
 
@@ -517,7 +517,7 @@ export async function generateConstructionNocPdfBytes(
     },
     {
       num: '12)',
-      text: 'Owner should ensure that the Contractors and Laborers who are in charge of House construction abide by Layout Security Rules and cooperate with MC and Security personnel guidelines while residing or working within the layout premises.',
+      text: 'Owner should ensure that the Contractors and Laborers who are in charge of House construction abide by Layout Security Rules and cooperate with Association and Security personnel guidelines while residing or working within the layout premises.',
     },
     {
       num: '13)',
@@ -537,11 +537,11 @@ export async function generateConstructionNocPdfBytes(
     },
     {
       num: '17)',
-      text: 'Upon completion of construction, the Management Committee (MC) will conduct a physical inspection to verify total debris removal, road/drain condition, and RWH installation before processing the Rs 20,000 security deposit refund.',
+      text: 'Upon completion of construction, the Managing Committee will conduct a physical inspection to verify total debris removal, road/drain condition, and RWH installation before processing the Rs 20,000 security deposit refund.',
     },
     {
       num: '18)',
-      text: 'Deviation from any of the above terms will be strictly dealt with by the Association. Any deviation will attract a minimum penalty of INR 20,000 (Twenty Thousand Only) or more based on the damage/impact assessed by the MC of Anugraha Evergreen Layout Owners Welfare Association.',
+      text: 'Deviation from any of the above terms will be strictly dealt with by the Association. Any deviation will attract a minimum penalty of INR 20,000 (Twenty Thousand Only) or more based on the damage/impact assessed by the Managing Committee of Anugraha Evergreen Layout Owners Welfare Association.',
     },
   ];
 
@@ -565,7 +565,7 @@ export async function generateConstructionNocPdfBytes(
   // Closing Salutation & Welcome
   curY2 = drawParagraph(
     page2,
-    'We, the MC of Anugraha Evergreen Layout hereby extend you a Warm Welcome to "Anugraha Family" and also wish you a successful completion of your House Construction.',
+    'We, the Managing Committee of Anugraha Evergreen Layout hereby extend you a Warm Welcome to "Anugraha Family" and also wish you a successful completion of your House Construction.',
     {
       x: 38,
       y: curY2,
@@ -581,7 +581,7 @@ export async function generateConstructionNocPdfBytes(
 
   curY2 = drawParagraph(
     page2,
-    'In case of any Doubts / Clarifications / Support, please feel free to reach out to the MC members who would be happy to assist you with your queries.',
+    'In case of any Doubts / Clarifications / Support, please feel free to reach out to the Managing Committee members who would be happy to assist you with your queries.',
     {
       x: 38,
       y: curY2,
@@ -604,7 +604,7 @@ export async function generateConstructionNocPdfBytes(
   });
   curY2 -= 13;
 
-  page2.drawText('MC, "ANUGRAHA EVERGREEN LAYOUT OWNERS WELFARE ASSOCIATION"', {
+  page2.drawText('MANAGING COMMITTEE, "ANUGRAHA EVERGREEN LAYOUT OWNERS WELFARE ASSOCIATION"', {
     x: 38,
     y: curY2,
     size: 9,
@@ -660,7 +660,7 @@ export async function generateConstructionNocPdfBytes(
 
 /**
  * Generates the Official Deposit Refund & Site Clearance Settlement Voucher PDF
- * Redesigned with accounting ledger tables, full MC inspection sign-off, and clean proportions.
+ * Redesigned with accounting ledger tables, full Managing Committee inspection sign-off, and clean proportions.
  */
 export async function generateRefundSettlementPdfBytes(
   req: ServiceRequest,
@@ -765,7 +765,7 @@ export async function generateRefundSettlementPdfBytes(
 
   curY = curY - box1Height - 16;
 
-  // SECTION 2: MC PHYSICAL INSPECTION CLEARANCE (Card Box)
+  // SECTION 2: MANAGING COMMITTEE PHYSICAL INSPECTION CLEARANCE (Card Box)
   const box2Height = 64;
   page.drawRectangle({
     x: 36,
@@ -777,7 +777,7 @@ export async function generateRefundSettlementPdfBytes(
     color: rgb(0.99, 1.0, 0.99),
   });
 
-  page.drawText('2. MANAGEMENT COMMITTEE SITE INSPECTION VERIFICATION', {
+  page.drawText('2. MANAGING COMMITTEE SITE INSPECTION VERIFICATION', {
     x: 44,
     y: curY - 14,
     size: 8.5,
@@ -1053,7 +1053,7 @@ export async function generateReMeasurementNocPdfBytes(
     '1. The survey must strictly adhere to the layout master approval plan and revenue village sketches.',
     '2. Physical survey and stone alignment must be conducted in the presence of authorized Association representatives.',
     '3. Adjoining plot owners must be notified prior to boundary marking as per layout verification protocol.',
-    '4. No alteration of boundary stones, common road berms, or trees is permitted without MC sign-off.',
+    '4. No alteration of boundary stones, common road berms, or trees is permitted without Association sign-off.',
   ];
 
   for (const n of notes) {

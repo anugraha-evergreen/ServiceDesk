@@ -42,7 +42,7 @@ export default function AdminRequestDetailPage({
   const [boundaryCoords, setBoundaryCoords] = useState(false);
   const [encroachmentClear, setEncroachmentClear] = useState(false);
   const [surveyStoneOk, setSurveyStoneOk] = useState(false);
-  const [surveyorName, setSurveyorName] = useState('K. Ramesh (Licensed Surveyor)');
+  const [surveyorName, setSurveyorName] = useState('');
 
   useEffect(() => {
     if (!loading && (!session || session.role !== 'admin')) {
@@ -64,7 +64,7 @@ export default function AdminRequestDetailPage({
           setBoundaryCoords(data.request.reMeasurementChecklist.boundaryCoordinatesVerified);
           setEncroachmentClear(data.request.reMeasurementChecklist.encroachmentClearance);
           setSurveyStoneOk(data.request.reMeasurementChecklist.surveyStoneConfirmed);
-          setSurveyorName(data.request.reMeasurementChecklist.surveyorAssigned || 'K. Ramesh');
+          setSurveyorName(data.request.reMeasurementChecklist.surveyorAssigned || '');
         }
       }
     } catch (e) {
@@ -81,17 +81,20 @@ export default function AdminRequestDetailPage({
   const handleApproveConstructionNoc = async () => {
     if (!request) return;
     try {
-      const currentChk = request.preConstructionChecklist || {
+      const existingChk = request.preConstructionChecklist;
+      const currentChk = {
         docsVerified: true,
         membershipFeeCleared: true,
         maintenanceDuesCleared: true,
         securityDepositPaid: true,
-        depositTransactionId: `AEOWA-DEP-${request.plotNumber}`,
-        depositDate: new Date().toISOString().split('T')[0],
-        depositBank: 'HDFC Bank',
+        depositTransactionId: existingChk?.depositTransactionId?.trim() || `AEOWA-DEP-${request.plotNumber}`,
+        depositDate: existingChk?.depositDate || new Date().toISOString().split('T')[0],
+        depositBank: existingChk?.depositBank || '',
         labourerToiletInstalled: true,
         bescomWaterArrangementVerified: true,
         labourersRegistered: true,
+        verifiedBy: 'Hon. General Secretary, AEOWA',
+        verifiedAt: new Date().toISOString(),
       };
 
       const certId =
@@ -102,21 +105,7 @@ export default function AdminRequestDetailPage({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           status: 'approved',
-          preConstructionChecklist: {
-            ...currentChk,
-            docsVerified: true,
-            membershipFeeCleared: true,
-            maintenanceDuesCleared: true,
-            securityDepositPaid: true,
-            depositTransactionId: currentChk.depositTransactionId?.trim() || `AEOWA-DEP-${request.plotNumber}`,
-            depositDate: currentChk.depositDate || new Date().toISOString().split('T')[0],
-            depositBank: currentChk.depositBank || 'HDFC Bank',
-            labourerToiletInstalled: true,
-            bescomWaterArrangementVerified: true,
-            labourersRegistered: true,
-            verifiedBy: 'Hon. General Secretary, AEOWA',
-            verifiedAt: new Date().toISOString(),
-          },
+          preConstructionChecklist: currentChk,
           generatedNocCertificateId: certId,
           generatedNocPdfUrl: `/api/pdf/noc?requestId=${request.id}&role=admin`,
         }),
@@ -423,7 +412,7 @@ export default function AdminRequestDetailPage({
             </div>
 
             <p className="text-[11px] text-gray-500">
-              Fetched from Supabase Storage • Secure resident document archive
+              Stored in storage • Secure resident document archive
             </p>
 
             <div className="space-y-3 pt-1">
