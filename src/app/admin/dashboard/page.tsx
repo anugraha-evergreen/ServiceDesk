@@ -43,11 +43,24 @@ export default function AdminDashboardPage() {
   }, [session, loading, router]);
 
   const loadRequests = async () => {
-    setFetching(true);
+    // 1. Instant Cache Hydration: Read from sessionStorage for snappy 0ms paint
+    try {
+      const cached = sessionStorage.getItem('aelra_cache_admin_requests');
+      if (cached) {
+        setRequests(JSON.parse(cached));
+        setFetching(false);
+      }
+    } catch {}
+
     try {
       const res = await fetch('/api/requests?role=admin');
       const data = await res.json();
-      if (data.requests) setRequests(data.requests);
+      if (data.requests) {
+        setRequests(data.requests);
+        try {
+          sessionStorage.setItem('aelra_cache_admin_requests', JSON.stringify(data.requests));
+        } catch {}
+      }
     } catch (e) {
       console.error(e);
     } finally {

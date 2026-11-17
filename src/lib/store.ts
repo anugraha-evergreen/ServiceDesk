@@ -6,6 +6,14 @@ import { supabase, isSupabaseConfigured } from './supabaseClient';
 let memoryPlots: Plot[] = [...INITIAL_PLOTS];
 let memoryRequests: ServiceRequest[] = [...INITIAL_REQUESTS];
 
+// Ultra-fast memory cache controls (drastically cuts redundant database roundtrips)
+let plotsCacheTime = 0;
+const PLOTS_CACHE_TTL_MS = 60 * 1000; // 60 seconds
+
+let requestsCacheTime = 0;
+let cachedRequests: ServiceRequest[] | null = null;
+const REQUESTS_CACHE_TTL_MS = 10 * 1000; // 10 seconds
+
 /**
  * STRICT PRIVACY SANITIZATION:
  * Owners must NEVER receive document links, drive preview links, or generated PDF URLs.
@@ -172,14 +180,21 @@ function plotToRow(plot: Plot): any {
 }
 
 /**
- * Fetch all registered plots (from Supabase if configured, or memory fallback)
+ * Fetch all registered plots (cached in memory with 60s TTL for snappy sub-millisecond response)
  */
 export async function getAllPlots(): Promise<Plot[]> {
+  const now = Date.now();
+  if (plotsCacheTime && now - plotsCacheTime < PLOTS_CACHE_TTL_MS && memoryPlots.length > 0) {
+    return memoryPlots;
+  }
+
   if (isSupabaseConfigured && supabase) {
     try {
       const { data, error } = await supabase.from('plots').select('*');
       if (!error && data && data.length > 0) {
-        return data.map(rowToPlot);
+        memoryPlots = data.map(rowToPlot);
+        plotsCacheTime = now;
+        return memoryPlots;
       }
     } catch (e) {
       console.warn('Supabase plots fetch error, using local fallback:', e);
@@ -218,6 +233,9 @@ export async function getPlotByNumber(plotNumber: string): Promise<Plot | undefi
 }
 
 export async function updatePlotRecord(updated: Plot): Promise<Plot> {
+  // Invalidate plots cache
+  plotsCacheTime = 0;
+
   const index = memoryPlots.findIndex((p) => p.plotNumber === updated.plotNumber);
   if (index >= 0) {
     memoryPlots[index] = updated;
@@ -237,25 +255,32 @@ export async function updatePlotRecord(updated: Plot): Promise<Plot> {
 }
 
 export async function getAllRequests(role: UserRole = 'owner', plotNumber?: string): Promise<ServiceRequest[]> {
+  const now = Date.now();
   let list = memoryRequests;
 
   if (isSupabaseConfigured && supabase) {
-    try {
-      const { data, error } = await supabase
-        .from('service_requests')
-        .select('*')
-        .order('updated_at', { ascending: false });
-      if (!error && data) {
-        const dbRequests = data.map(rowToServiceRequest);
-        // Merge with any in-memory requests not yet present in Supabase
-        const dbIds = new Set(dbRequests.map((r) => r.id));
-        const extraMem = memoryRequests.filter((r) => !dbIds.has(r.id));
-        list = [...dbRequests, ...extraMem];
-      } else if (error) {
-        console.warn('Supabase getAllRequests error, using memory fallback:', error);
+    if (cachedRequests && requestsCacheTime && now - requestsCacheTime < REQUESTS_CACHE_TTL_MS) {
+      list = cachedRequests;
+    } else {
+      try {
+        const { data, error } = await supabase
+          .from('service_requests')
+          .select('*')
+          .order('updated_at', { ascending: false });
+        if (!error && data) {
+          const dbRequests = data.map(rowToServiceRequest);
+          // Merge with any in-memory requests not yet present in Supabase
+          const dbIds = new Set(dbRequests.map((r) => r.id));
+          const extraMem = memoryRequests.filter((r) => !dbIds.has(r.id));
+          list = [...dbRequests, ...extraMem];
+          cachedRequests = list;
+          requestsCacheTime = now;
+        } else if (error) {
+          console.warn('Supabase getAllRequests error, using memory fallback:', error);
+        }
+      } catch (e) {
+        console.warn('Supabase requests fetch error, using local fallback:', e);
       }
-    } catch (e) {
-      console.warn('Supabase requests fetch error, using local fallback:', e);
     }
   }
 
@@ -368,6 +393,9 @@ export async function createServiceRequest(
   }
 
   memoryRequests.unshift(created);
+  // Invalidate requests cache immediately
+  cachedRequests = null;
+  requestsCacheTime = 0;
   return created;
 }
 
@@ -377,6 +405,10 @@ export async function updateServiceRequest(
 ): Promise<ServiceRequest | undefined> {
   const now = new Date().toISOString();
   let updatedReq: ServiceRequest | undefined;
+
+  // Invalidate requests cache immediately
+  cachedRequests = null;
+  requestsCacheTime = 0;
 
   const index = memoryRequests.findIndex((r) => r.id === id);
   if (index >= 0) {
@@ -442,6 +474,87 @@ export async function updateServiceRequest(
   }
 
   return updatedReq;
+}
+
+/**
+ * Delete Service Request & associated documents from Supabase Storage
+ */
+export async function deleteServiceRequest(id: string): Promise<{
+  success: boolean;
+  message: string;
+  deletedFilesCount: number;
+}> {
+  // Invalidate requests cache immediately
+  cachedRequests = null;
+  requestsCacheTime = 0;
+
+  // 1. Fetch request with documents first
+  const req = await getRequestById(id, 'admin');
+  if (!req) {
+    return { success: false, message: 'Request not found', deletedFilesCount: 0 };
+  }
+
+  let deletedFilesCount = 0;
+
+  // 2. Delete all uploaded documents from Supabase Storage
+  if (isSupabaseConfigured && supabase && req.documents && req.documents.length > 0) {
+    try {
+      const pathsToDelete: string[] = [];
+      for (const doc of req.documents) {
+        let storagePath: string | null = null;
+        if (doc.driveWebViewLink) {
+          const match = doc.driveWebViewLink.match(/\/documents\/(.+)$/);
+          if (match) {
+            storagePath = decodeURIComponent(match[1]);
+          }
+        }
+        if (!storagePath && doc.driveFileId && doc.driveFileId.includes('Plot_')) {
+          storagePath = doc.driveFileId;
+        }
+
+        if (storagePath) {
+          pathsToDelete.push(storagePath);
+        }
+      }
+
+      if (pathsToDelete.length > 0) {
+        const { data, error } = await supabase.storage.from('documents').remove(pathsToDelete);
+        if (error) {
+          console.warn('Supabase storage remove error:', error);
+        } else {
+          deletedFilesCount = data?.length || pathsToDelete.length;
+          console.log(`Deleted ${deletedFilesCount} documents from Supabase storage for request ${id}`);
+        }
+      }
+    } catch (storageErr) {
+      console.warn('Failed to delete files from Supabase storage:', storageErr);
+    }
+  }
+
+  // 3. Delete from Supabase Database
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase.from('service_requests').delete().eq('id', id);
+      if (error) {
+        console.error('Supabase request delete error:', error);
+        throw new Error(`Failed to delete request from database: ${error.message}`);
+      }
+    } catch (dbErr) {
+      console.error('Supabase delete exception:', dbErr);
+      throw dbErr;
+    }
+  }
+
+  // 4. Delete from memory cache
+  memoryRequests = memoryRequests.filter((r) => r.id !== id);
+  cachedRequests = null;
+  requestsCacheTime = 0;
+
+  return {
+    success: true,
+    message: 'Request and associated documents successfully deleted',
+    deletedFilesCount,
+  };
 }
 
 /**

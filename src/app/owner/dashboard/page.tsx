@@ -18,6 +18,9 @@ import {
   Calendar,
   Lock,
   Pencil,
+  Trash2,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 
 export default function OwnerDashboardPage() {
@@ -26,6 +29,11 @@ export default function OwnerDashboardPage() {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [plot, setPlot] = useState<Plot | null>(null);
   const [fetching, setFetching] = useState(true);
+
+  // Deletion modal state
+  const [deleteConfirmReq, setDeleteConfirmReq] = useState<ServiceRequest | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && (!session || session.role !== 'owner')) {
@@ -39,29 +47,96 @@ export default function OwnerDashboardPage() {
   }, [session, loading, router]);
 
   const loadData = async (plotNum: string) => {
-    setFetching(true);
+    // 1. Instant Cache Hydration: Read from sessionStorage if present for 0ms initial paint
+    const cacheKey = `aelra_cache_owner_${plotNum.trim().toLowerCase()}`;
     try {
-      const plotRes = await fetch('/api/plots');
-      const plotData = await plotRes.json();
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.requests) setRequests(parsed.requests);
+        if (parsed.plot) setPlot(parsed.plot);
+        setFetching(false);
+      }
+    } catch {}
+
+    try {
+      // 2. Ultra-fast parallel network revalidation
+      const [plotRes, reqRes] = await Promise.all([
+        fetch('/api/plots'),
+        fetch(`/api/requests?role=owner&plotNumber=${encodeURIComponent(plotNum)}`),
+      ]);
+
+      const [plotData, reqData] = await Promise.all([plotRes.json(), reqRes.json()]);
+
+      let matchedPlot: Plot | null = null;
       if (plotData.plots) {
-        const match = plotData.plots.find(
-          (p: Plot) =>
-            p.plotNumber.toLowerCase() === plotNum.toLowerCase() ||
-            (p.mergedPlots && p.mergedPlots.includes(plotNum))
-        );
-        if (match) setPlot(match);
+        matchedPlot =
+          plotData.plots.find(
+            (p: Plot) =>
+              p.plotNumber.toLowerCase() === plotNum.toLowerCase() ||
+              (p.mergedPlots && p.mergedPlots.includes(plotNum))
+          ) || null;
+        if (matchedPlot) setPlot(matchedPlot);
       }
 
-      // Fetch requests (role=owner ensures strict privacy sanitization)
-      const reqRes = await fetch(`/api/requests?role=owner&plotNumber=${plotNum}`);
-      const reqData = await reqRes.json();
-      if (reqData.requests) {
-        setRequests(reqData.requests);
-      }
+      const freshRequests = reqData.requests || [];
+      setRequests(freshRequests);
+
+      // Save to cache for instant 0ms subsequent navigations
+      try {
+        sessionStorage.setItem(
+          cacheKey,
+          JSON.stringify({ plot: matchedPlot, requests: freshRequests })
+        );
+      } catch {}
     } catch (e) {
       console.error(e);
     } finally {
       setFetching(false);
+    }
+  };
+
+  const handleDeleteRequest = async () => {
+    if (!deleteConfirmReq || !session?.plotNumber) return;
+    setDeleting(true);
+    setDeleteError(null);
+
+    const targetId = deleteConfirmReq.id;
+
+    // Optimistically remove from state immediately for snappy response
+    const prevRequests = [...requests];
+    setRequests((prev) => prev.filter((r) => r.id !== targetId));
+
+    try {
+      const res = await fetch(
+        `/api/requests/${targetId}?role=owner&plotNumber=${encodeURIComponent(session.plotNumber)}`,
+        { method: 'DELETE' }
+      );
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        // Rollback optimistic state on failure
+        setRequests(prevRequests);
+        throw new Error(data.error || 'Failed to delete request');
+      }
+
+      // Update sessionStorage cache
+      const cacheKey = `aelra_cache_owner_${session.plotNumber.trim().toLowerCase()}`;
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          parsed.requests = (parsed.requests || []).filter((r: ServiceRequest) => r.id !== targetId);
+          sessionStorage.setItem(cacheKey, JSON.stringify(parsed));
+        }
+      } catch {}
+
+      setDeleteConfirmReq(null);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete application';
+      setDeleteError(msg);
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -250,21 +325,35 @@ export default function OwnerDashboardPage() {
                     <StatusBadge status={req.status} />
 
                     {req.status !== 'approved' && req.status !== 'completed' ? (
-                      <Link
-                        href={
-                          req.type === 'construction_noc'
-                            ? `/owner/construction-noc?edit=${req.id}`
-                            : req.type === 'remeasurement_noc'
-                            ? `/owner/remeasurement-noc?edit=${req.id}`
-                            : req.type === 'sale_deed'
-                            ? `/owner/sale-deed?edit=${req.id}`
-                            : `/owner/amalgamation?edit=${req.id}`
-                        }
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold transition"
-                      >
-                        <Pencil className="w-3.5 h-3.5 text-emerald-700" />
-                        <span>Edit Application</span>
-                      </Link>
+                      <div className="flex items-center gap-1.5">
+                        <Link
+                          href={
+                            req.type === 'construction_noc'
+                              ? `/owner/construction-noc?edit=${req.id}`
+                              : req.type === 'remeasurement_noc'
+                              ? `/owner/remeasurement-noc?edit=${req.id}`
+                              : req.type === 'sale_deed'
+                              ? `/owner/sale-deed?edit=${req.id}`
+                              : `/owner/amalgamation?edit=${req.id}`
+                          }
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold transition cursor-pointer"
+                        >
+                          <Pencil className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>Edit</span>
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDeleteError(null);
+                            setDeleteConfirmReq(req);
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition cursor-pointer"
+                          title="Withdraw and delete this request and its files from Supabase"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Delete</span>
+                        </button>
+                      </div>
                     ) : (
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-50 border border-gray-200 text-gray-500 text-[11px] font-medium">
                         <Lock className="w-3 h-3 text-gray-400" />
@@ -302,7 +391,7 @@ export default function OwnerDashboardPage() {
                     </span>
                     <span className="text-[11px] text-gray-400 flex items-center gap-1">
                       <Lock className="w-3 h-3 text-emerald-600" />
-                      Encrypted in Drive (Admin Access Only)
+                      Encrypted in Supabase (Admin Access Only)
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1.5">
@@ -338,6 +427,82 @@ export default function OwnerDashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Delete Application Confirmation Modal */}
+      {deleteConfirmReq && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-gray-100 space-y-4">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 bg-rose-100 text-rose-700 rounded-2xl shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Delete Application #{deleteConfirmReq.id}?
+                </h3>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  Are you sure you want to delete this application for Plot #{deleteConfirmReq.plotNumber}? All <strong>{deleteConfirmReq.documents.length} attached documents</strong> will be permanently purged from Supabase Storage.
+                </p>
+              </div>
+            </div>
+
+            {/* Document list warning */}
+            {deleteConfirmReq.documents && deleteConfirmReq.documents.length > 0 && (
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 text-xs text-gray-600 space-y-1.5">
+                <span className="font-semibold text-gray-800 block text-[11px] uppercase tracking-wider">
+                  Files to be deleted from Supabase Storage:
+                </span>
+                <ul className="list-disc list-inside space-y-0.5 text-[11px] text-gray-600">
+                  {deleteConfirmReq.documents.map((d) => (
+                    <li key={d.id} className="truncate">
+                      {d.label || d.fileName}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {deleteError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{deleteError}</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => {
+                  setDeleteConfirmReq(null);
+                  setDeleteError(null);
+                }}
+                className="px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 text-xs font-semibold text-gray-700 transition cursor-pointer disabled:opacity-50"
+              >
+                Keep Application
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={handleDeleteRequest}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white transition shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting Files & Record...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Yes, Delete & Wipe Files</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRequestById, updateServiceRequest } from '@/lib/store';
+import { getRequestById, updateServiceRequest, deleteServiceRequest } from '@/lib/store';
 import { UserRole } from '@/lib/types';
 
 export async function GET(
@@ -81,3 +81,60 @@ export async function PATCH(
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const { searchParams } = new URL(req.url);
+    const role = (searchParams.get('role') || 'owner') as UserRole;
+    const plotNumber = searchParams.get('plotNumber') || undefined;
+
+    // 1. Verify existing record
+    const existing = await getRequestById(id, 'admin');
+    if (!existing) {
+      return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+    }
+
+    // 2. Role-based permission checks
+    if (role === 'owner') {
+      // Cannot delete once approved or completed
+      if (existing.status === 'approved' || existing.status === 'completed') {
+        return NextResponse.json(
+          {
+            error:
+              'Approved or completed applications cannot be deleted. Please contact the AEOWA Management Committee.',
+          },
+          { status: 400 }
+        );
+      }
+
+      // Check plot authorization if plotNumber provided
+      if (
+        plotNumber &&
+        existing.plotNumber.trim().toLowerCase() !== plotNumber.trim().toLowerCase()
+      ) {
+        return NextResponse.json(
+          { error: 'Unauthorized to delete request for another plot.' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // 3. Delete from Supabase Storage and PostgreSQL
+    const result = await deleteServiceRequest(id);
+
+    return NextResponse.json({
+      success: true,
+      message: result.message,
+      deletedFilesCount: result.deletedFilesCount,
+    });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Error deleting request';
+    console.error('DELETE /api/requests/[id] failed:', e);
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+

@@ -23,6 +23,7 @@ import {
   ChevronDown,
   ChevronUp,
   Pencil,
+  Trash2,
 } from 'lucide-react';
 
 export default function ConstructionNocPage() {
@@ -65,6 +66,35 @@ function ConstructionNocForm() {
   const [docs, setDocs] = useState<Record<string, UploadedDoc>>({});
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  // Deletion modal state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!editId || !session?.plotNumber) return;
+    setDeleting(true);
+    setFormError(null);
+    try {
+      const res = await fetch(
+        `/api/requests/${editId}?role=owner&plotNumber=${encodeURIComponent(session.plotNumber)}`,
+        { method: 'DELETE' }
+      );
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to delete application');
+      }
+      try {
+        sessionStorage.removeItem(`aelra_cache_owner_${session.plotNumber.trim().toLowerCase()}`);
+      } catch {}
+      router.push('/owner/dashboard');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete application';
+      setFormError(msg);
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   useEffect(() => {
     if (!loading && (!session || session.role !== 'owner')) {
@@ -259,13 +289,73 @@ function ConstructionNocForm() {
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => router.push('/owner/dashboard')}
-            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-300 bg-white hover:bg-amber-100 text-amber-900 transition self-start sm:self-auto cursor-pointer"
-          >
-            Cancel Edit
-          </button>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <button
+              type="button"
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-rose-300 bg-white hover:bg-rose-50 text-rose-700 transition flex items-center gap-1 cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+              <span>Delete Application</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => router.push('/owner/dashboard')}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-300 bg-white hover:bg-amber-100 text-amber-900 transition cursor-pointer"
+            >
+              Cancel Edit
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-gray-100 space-y-4">
+            <div className="flex items-start gap-3.5">
+              <div className="p-3 bg-rose-100 text-rose-700 rounded-2xl shrink-0">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-bold text-gray-900">
+                  Delete Application #{editId}?
+                </h3>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  Are you sure you want to permanently delete this application? All uploaded construction permits, building plans, and tax receipts will be purged from Supabase Storage.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 text-xs font-semibold text-gray-700 transition cursor-pointer disabled:opacity-50"
+              >
+                Keep Application
+              </button>
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={handleDelete}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-bold text-white transition shadow-xs cursor-pointer disabled:opacity-50"
+              >
+                {deleting ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Deleting Files & Record...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Yes, Delete & Wipe Files</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

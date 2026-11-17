@@ -40,19 +40,26 @@ export function setClientSession(session: ClientSession | null): void {
 }
 
 export function useSession() {
-  const [session, setSession] = useState<ClientSession | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<ClientSession | null>(() => getClientSession());
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setSession(getClientSession());
-    setLoading(false);
+    // Keep in sync with storage events
+    const current = getClientSession();
+    if (JSON.stringify(current) !== JSON.stringify(session)) {
+      setSession(current);
+    }
 
     const handleSessionChange = () => {
       setSession(getClientSession());
     };
 
     window.addEventListener('aelra_session_change', handleSessionChange);
-    return () => window.removeEventListener('aelra_session_change', handleSessionChange);
+    window.addEventListener('storage', handleSessionChange);
+    return () => {
+      window.removeEventListener('aelra_session_change', handleSessionChange);
+      window.removeEventListener('storage', handleSessionChange);
+    };
   }, []);
 
   return { session, loading, setSession };
