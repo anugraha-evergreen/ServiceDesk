@@ -49,10 +49,22 @@ export async function POST(req: NextRequest) {
             storageProvider: 'supabase_storage',
           });
         } else if (error) {
-          console.warn('Supabase storage upload error:', error);
+          console.error('Supabase storage upload error:', error);
+          return NextResponse.json(
+            {
+              error: `Supabase Storage upload failed: ${error.message}. Please check if the 'documents' bucket exists in your Supabase project (Dashboard -> Storage -> New Bucket -> 'documents').`,
+              details: error,
+            },
+            { status: 500 }
+          );
         }
       } catch (sbErr) {
-        console.warn('Supabase storage exception:', sbErr);
+        console.error('Supabase storage exception:', sbErr);
+        const msg = sbErr instanceof Error ? sbErr.message : String(sbErr);
+        return NextResponse.json(
+          { error: `Supabase storage error: ${msg}` },
+          { status: 500 }
+        );
       }
     }
 
@@ -78,10 +90,26 @@ export async function POST(req: NextRequest) {
       } catch (driveErr: unknown) {
         const msg = driveErr instanceof Error ? driveErr.message : String(driveErr);
         console.warn('Google Drive rejected upload:', msg);
+        if (process.env.NODE_ENV === 'production' && !isSupabaseConfigured) {
+          return NextResponse.json(
+            { error: `Google Drive upload error: ${msg}. Configure Supabase Storage instead.` },
+            { status: 500 }
+          );
+        }
       }
     }
 
-    // 3. Fallback mock record if neither cloud store is active
+    // 3. Fallback mock record ONLY in local development
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        {
+          error:
+            'Storage not configured. Please ensure NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set in Vercel, and a public bucket named "documents" exists in Supabase.',
+        },
+        { status: 500 }
+      );
+    }
+
     const mockFileId = `doc-mock-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const folderPath = `/Anugraha_Evergreen_Records/Plot_${plotNumber.replace(/\s+/g, '_')}/${category}/`;
     return NextResponse.json({
