@@ -38,6 +38,7 @@ export interface UploadedDoc {
     | 'sale_deed_doc'
     | 'amalgamation_sanction'
     | 'refund_proof'
+    | 'deposit_receipt'
     | 'supporting_doc'
     | 'other';
   label: string;
@@ -57,6 +58,8 @@ export interface PreConstructionChecklist {
   depositTransactionId: string;
   depositDate: string;
   depositBank: string;
+  depositReceiptUrl?: string;
+  depositReceiptFileName?: string;
   labourerToiletInstalled: boolean;
   bescomWaterArrangementVerified: boolean;
   labourersRegistered: boolean;
@@ -67,6 +70,7 @@ export interface PreConstructionChecklist {
 
 export interface DeductionItem {
   id: string;
+  categoryKey?: string;
   reason: string;
   amount: number;
 }

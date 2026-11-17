@@ -111,7 +111,11 @@ function serviceRequestToFullRow(req: Partial<ServiceRequest>): any {
 }
 
 // Fallback row for PostgreSQL tables with only base schema columns
-function serviceRequestToBaseRow(req: Partial<ServiceRequest>, existingMeta?: any): any {
+function serviceRequestToBaseRow(
+  req: Partial<ServiceRequest>,
+  existingMeta?: any,
+  existingChecklist?: any
+): any {
   const row: any = {};
   if (req.id !== undefined) row.id = req.id;
   if (req.plotNumber !== undefined) row.plot_number = req.plotNumber;
@@ -131,22 +135,28 @@ function serviceRequestToBaseRow(req: Partial<ServiceRequest>, existingMeta?: an
 
   // Package all non-base fields into _extendedMeta inside pre_construction_checklist
   const meta: Record<string, any> = { ...(existingMeta || {}) };
-  if (req.ownerContactName !== undefined) meta.ownerContactName = req.ownerContactName;
-  if (req.ownerContactPhone !== undefined) meta.ownerContactPhone = req.ownerContactPhone;
-  if (req.contractorName !== undefined) meta.contractorName = req.contractorName;
-  if (req.contractorPhone !== undefined) meta.contractorPhone = req.contractorPhone;
-  if (req.saleDeedDetails !== undefined) meta.saleDeedDetails = req.saleDeedDetails;
-  if (req.amalgamationDetails !== undefined) meta.amalgamationDetails = req.amalgamationDetails;
-  if (req.adminNotes !== undefined) meta.adminNotes = req.adminNotes;
-  if (req.generatedNocPdfUrl !== undefined) meta.generatedNocPdfUrl = req.generatedNocPdfUrl;
-  if (req.generatedNocCertificateId !== undefined) meta.generatedNocCertificateId = req.generatedNocCertificateId;
-  if (req.refundSettlementPdfUrl !== undefined) meta.refundSettlementPdfUrl = req.refundSettlementPdfUrl;
+  let hasMetaUpdates = false;
+  if (req.ownerContactName !== undefined) { meta.ownerContactName = req.ownerContactName; hasMetaUpdates = true; }
+  if (req.ownerContactPhone !== undefined) { meta.ownerContactPhone = req.ownerContactPhone; hasMetaUpdates = true; }
+  if (req.contractorName !== undefined) { meta.contractorName = req.contractorName; hasMetaUpdates = true; }
+  if (req.contractorPhone !== undefined) { meta.contractorPhone = req.contractorPhone; hasMetaUpdates = true; }
+  if (req.saleDeedDetails !== undefined) { meta.saleDeedDetails = req.saleDeedDetails; hasMetaUpdates = true; }
+  if (req.amalgamationDetails !== undefined) { meta.amalgamationDetails = req.amalgamationDetails; hasMetaUpdates = true; }
+  if (req.adminNotes !== undefined) { meta.adminNotes = req.adminNotes; hasMetaUpdates = true; }
+  if (req.generatedNocPdfUrl !== undefined) { meta.generatedNocPdfUrl = req.generatedNocPdfUrl; hasMetaUpdates = true; }
+  if (req.generatedNocCertificateId !== undefined) { meta.generatedNocCertificateId = req.generatedNocCertificateId; hasMetaUpdates = true; }
+  if (req.refundSettlementPdfUrl !== undefined) { meta.refundSettlementPdfUrl = req.refundSettlementPdfUrl; hasMetaUpdates = true; }
 
-  const baseChecklist = req.preConstructionChecklist || {};
-  row.pre_construction_checklist = {
-    ...baseChecklist,
-    _extendedMeta: meta,
-  };
+  // Only update pre_construction_checklist if checklist or meta was changed or provided
+  if (req.preConstructionChecklist !== undefined || hasMetaUpdates || existingChecklist !== undefined) {
+    const baseChecklist = req.preConstructionChecklist !== undefined
+      ? sanitizeChecklist(req.preConstructionChecklist)
+      : (existingChecklist || {});
+    row.pre_construction_checklist = {
+      ...(baseChecklist || {}),
+      _extendedMeta: meta,
+    };
+  }
 
   return row;
 }
@@ -432,24 +442,20 @@ export async function updateServiceRequest(
         .select()
         .single();
 
-      // 2. If Postgres table lacks extended columns, fallback to base schema + metadata packaging
-      if (
-        error &&
-        (error.code === '42703' ||
-          error.code === 'PGRST204' ||
-          error.message?.includes('column') ||
-          error.message?.includes('schema cache'))
-      ) {
-        console.warn('Supabase missing column in update, retrying with base schema fallback:', error.message);
-        // Fetch current row to merge existing _extendedMeta
+      // 2. If full column update fails (missing columns or schema mismatch), fallback to base schema + metadata packaging
+      if (error) {
+        console.warn('Supabase full row update failed, retrying with base schema fallback:', error.message || error.code);
+        // Fetch current row to merge existing _extendedMeta and checklist
         const { data: currData } = await supabase
           .from('service_requests')
           .select('pre_construction_checklist')
           .eq('id', id)
           .single();
 
-        const currMeta = currData?.pre_construction_checklist?._extendedMeta;
-        const baseRow = serviceRequestToBaseRow(updates, currMeta);
+        const currChecklist = currData?.pre_construction_checklist;
+        const currMeta = currChecklist?._extendedMeta;
+        const cleanCurrChecklist = sanitizeChecklist(currChecklist);
+        const baseRow = serviceRequestToBaseRow(updates, currMeta, cleanCurrChecklist);
         baseRow.updated_at = now;
 
         const retryResult = await supabase
@@ -465,12 +471,21 @@ export async function updateServiceRequest(
 
       if (!error && data) {
         updatedReq = rowToServiceRequest(data);
+        if (index >= 0) {
+          memoryRequests[index] = updatedReq;
+        } else {
+          memoryRequests.unshift(updatedReq);
+        }
       } else if (error) {
         console.error('Supabase request update error:', error);
       }
     } catch (e) {
       console.warn('Supabase request update exception:', e);
     }
+  }
+
+  if (!updatedReq && index >= 0) {
+    updatedReq = memoryRequests[index];
   }
 
   return updatedReq;

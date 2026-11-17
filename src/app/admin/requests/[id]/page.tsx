@@ -22,6 +22,7 @@ import {
   Banknote,
   Lock,
   Printer,
+  Loader2,
 } from 'lucide-react';
 
 export default function AdminRequestDetailPage({
@@ -37,6 +38,7 @@ export default function AdminRequestDetailPage({
   const [fetching, setFetching] = useState(true);
   const [refundModalOpen, setRefundModalOpen] = useState(false);
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
+  const [isApproving, setIsApproving] = useState(false);
 
   // Re-measurement state
   const [boundaryCoords, setBoundaryCoords] = useState(false);
@@ -80,6 +82,7 @@ export default function AdminRequestDetailPage({
 
   const handleApproveConstructionNoc = async () => {
     if (!request) return;
+    setIsApproving(true);
     try {
       const existingChk = request.preConstructionChecklist;
       const currentChk = {
@@ -89,7 +92,7 @@ export default function AdminRequestDetailPage({
         securityDepositPaid: true,
         depositTransactionId: existingChk?.depositTransactionId?.trim() || `AEOWA-DEP-${request.plotNumber}`,
         depositDate: existingChk?.depositDate || new Date().toISOString().split('T')[0],
-        depositBank: existingChk?.depositBank || '',
+        depositBank: existingChk?.depositBank || 'Verified via Escrow',
         labourerToiletInstalled: true,
         bescomWaterArrangementVerified: true,
         labourersRegistered: true,
@@ -100,10 +103,14 @@ export default function AdminRequestDetailPage({
       const certId =
         request.generatedNocCertificateId || `AEOWA/NOC/2026/${request.plotNumber}`;
 
-      const res = await fetch(`/api/requests/${request.id}`, {
+      const res = await fetch(`/api/requests/${request.id}?role=admin`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': 'admin',
+        },
         body: JSON.stringify({
+          role: 'admin',
           status: 'approved',
           preConstructionChecklist: currentChk,
           generatedNocCertificateId: certId,
@@ -113,21 +120,31 @@ export default function AdminRequestDetailPage({
 
       if (!res.ok) throw new Error('Failed to approve construction NOC');
       const data = await res.json();
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('aelra_cache_admin_requests');
+      }
       setRequest(data.request);
-      setActionSuccess('Construction NOC Approved! The official pre-filled certificate is unlocked for download.');
+      setActionSuccess('Construction NOC Approved! The official pre-filled certificate is unlocked for download below.');
     } catch (e) {
       console.error(e);
       alert('Error approving construction NOC');
+    } finally {
+      setIsApproving(false);
     }
   };
 
   const handleApproveReMeasurement = async () => {
     if (!request) return;
+    setIsApproving(true);
     try {
-      const res = await fetch(`/api/requests/${request.id}`, {
+      const res = await fetch(`/api/requests/${request.id}?role=admin`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': 'admin',
+        },
         body: JSON.stringify({
+          role: 'admin',
           status: 'approved',
           reMeasurementChecklist: {
             boundaryCoordinatesVerified: boundaryCoords,
@@ -141,23 +158,35 @@ export default function AdminRequestDetailPage({
 
       if (!res.ok) throw new Error('Failed to approve re-measurement');
       const data = await res.json();
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('aelra_cache_admin_requests');
+      }
       setRequest(data.request);
-      setActionSuccess('Re-Measurement NOC Approved! You can now download the certificate.');
+      setActionSuccess('Re-Measurement NOC Approved! The pre-filled certificate is unlocked for download below.');
     } catch (e) {
       console.error(e);
       alert('Error approving re-measurement');
+    } finally {
+      setIsApproving(false);
     }
   };
 
   const handleApproveSaleDeed = async () => {
     if (!request || !request.saleDeedDetails) return;
+    setIsApproving(true);
     try {
-      const res = await fetch(`/api/requests/${request.id}`, {
+      const res = await fetch(`/api/requests/${request.id}?role=admin`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'completed' }),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': 'admin',
+        },
+        body: JSON.stringify({ role: 'admin', status: 'completed' }),
       });
       const data = await res.json();
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('aelra_cache_admin_requests');
+      }
       setRequest(data.request);
 
       await fetch('/api/plots', {
@@ -180,11 +209,14 @@ export default function AdminRequestDetailPage({
     } catch (e) {
       console.error(e);
       alert('Error updating sale deed record');
+    } finally {
+      setIsApproving(false);
     }
   };
 
   const handleApproveAmalgamation = async () => {
     if (!request || !request.amalgamationDetails) return;
+    setIsApproving(true);
     try {
       const res = await fetch('/api/plots', {
         method: 'POST',
@@ -200,12 +232,18 @@ export default function AdminRequestDetailPage({
       const data = await res.json();
       if (!data.success) throw new Error(data.message || 'Amalgamation failed');
 
-      const reqRes = await fetch(`/api/requests/${request.id}`, {
+      const reqRes = await fetch(`/api/requests/${request.id}?role=admin`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'completed' }),
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': 'admin',
+        },
+        body: JSON.stringify({ role: 'admin', status: 'completed' }),
       });
       const reqData = await reqRes.json();
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('aelra_cache_admin_requests');
+      }
       setRequest(reqData.request);
 
       setActionSuccess(
@@ -214,6 +252,8 @@ export default function AdminRequestDetailPage({
     } catch (e) {
       console.error(e);
       alert('Error approving amalgamation');
+    } finally {
+      setIsApproving(false);
     }
   };
 
@@ -297,6 +337,7 @@ export default function AdminRequestDetailPage({
           {request.status !== 'approved' && request.status !== 'completed' ? (
             <button
               type="button"
+              disabled={isApproving}
               onClick={
                 request.type === 'construction_noc'
                   ? handleApproveConstructionNoc
@@ -306,34 +347,50 @@ export default function AdminRequestDetailPage({
                   ? handleApproveSaleDeed
                   : handleApproveAmalgamation
               }
-              className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition flex items-center gap-2 cursor-pointer"
+              className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 disabled:bg-emerald-600/70 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition flex items-center gap-2 cursor-pointer"
             >
-              <CheckCircle2 className="w-4 h-4" />
+              {isApproving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4" />
+              )}
               <span>
-                {request.type === 'construction_noc' && 'Approve & Issue Construction NOC'}
-                {request.type === 'remeasurement_noc' && 'Approve & Issue Re-Measurement NOC'}
-                {request.type === 'sale_deed' && 'Verify & Approve Sale Deed'}
-                {request.type === 'plot_amalgamation' && 'Approve Amalgamation'}
+                {isApproving
+                  ? 'Approving & Recording...'
+                  : request.type === 'construction_noc'
+                  ? 'Approve & Issue Construction NOC'
+                  : request.type === 'remeasurement_noc'
+                  ? 'Approve & Issue Re-Measurement NOC'
+                  : request.type === 'sale_deed'
+                  ? 'Verify & Approve Sale Deed'
+                  : 'Approve Amalgamation'}
               </span>
             </button>
           ) : (
-            <span className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center gap-1.5">
+            <span className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center gap-1.5 shadow-xs">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Request Approved & On Record</span>
+              <span>
+                {request.type === 'construction_noc' && '✓ Construction NOC Approved & On Record'}
+                {request.type === 'remeasurement_noc' && '✓ Re-Measurement Approved & On Record'}
+                {request.type === 'sale_deed' && '✓ Sale Deed Verified & Record Updated'}
+                {request.type === 'plot_amalgamation' && '✓ Plots Merged into Unified Record'}
+              </span>
             </span>
           )}
 
-          {request.type === 'construction_noc' && isChecklistComplete && (
-            <a
-              href={`/api/pdf/noc?requestId=${request.id}&role=admin`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5"
-            >
-              <Download className="w-4 h-4" />
-              <span>Download Construction NOC PDF (Pre-filled)</span>
-            </a>
-          )}
+          {/* Construction NOC PDF Buttons: ready & visible post-approval or when checklist is complete */}
+          {request.type === 'construction_noc' &&
+            (request.status === 'approved' || request.status === 'completed' || isChecklistComplete) && (
+              <a
+                href={`/api/pdf/noc?requestId=${request.id}&role=admin`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download Construction NOC PDF (Pre-filled)</span>
+              </a>
+            )}
 
           {request.type === 'construction_noc' && (
             <a
@@ -348,6 +405,7 @@ export default function AdminRequestDetailPage({
             </a>
           )}
 
+          {/* Re-Measurement NOC PDF Button: ready & visible */}
           {request.type === 'remeasurement_noc' && (
             <>
               <a
@@ -357,7 +415,11 @@ export default function AdminRequestDetailPage({
                 className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5"
               >
                 <Download className="w-4 h-4" />
-                <span>Download Re-Measurement NOC (Pre-filled)</span>
+                <span>
+                  {request.status === 'approved' || request.status === 'completed'
+                    ? 'Download Approved Re-Measurement NOC PDF'
+                    : 'Download Re-Measurement NOC (Pre-filled)'}
+                </span>
               </a>
               <a
                 href={`/api/pdf/noc?requestId=${request.id}&blank=true&role=admin`}

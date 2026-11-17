@@ -30,8 +30,9 @@ export async function PATCH(
   try {
     const { id } = await params;
     const { searchParams } = new URL(req.url);
-    const role = (searchParams.get('role') || 'owner') as UserRole;
     const body = await req.json();
+    const roleParam = searchParams.get('role') || req.headers.get('x-user-role') || body.role;
+    const role: UserRole = roleParam === 'admin' ? 'admin' : 'owner';
 
     // Verify existing record
     const existing = await getRequestById(id, 'admin');
@@ -70,7 +71,8 @@ export async function PATCH(
     }
 
     // Admin role updates
-    const updated = await updateServiceRequest(id, body);
+    const { role: _r, ...adminUpdates } = body;
+    const updated = await updateServiceRequest(id, adminUpdates);
     if (!updated) {
       return NextResponse.json({ error: 'Request not found' }, { status: 404 });
     }
