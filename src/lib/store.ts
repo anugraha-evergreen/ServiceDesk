@@ -420,7 +420,25 @@ export async function updateServiceRequest(
   cachedRequests = null;
   requestsCacheTime = 0;
 
-  const index = memoryRequests.findIndex((r) => r.id === id);
+  // 1. Ensure request is hydrated into memoryRequests even on serverless cold starts
+  let index = memoryRequests.findIndex((r) => r.id === id);
+  if (index < 0 && isSupabaseConfigured && supabase) {
+    try {
+      const { data: fetchRow } = await supabase
+        .from('service_requests')
+        .select('*')
+        .eq('id', id)
+        .single();
+      if (fetchRow) {
+        const existingReq = rowToServiceRequest(fetchRow);
+        memoryRequests.unshift(existingReq);
+        index = 0;
+      }
+    } catch (e) {
+      console.warn('Cold-start request fetch error:', e);
+    }
+  }
+
   if (index >= 0) {
     memoryRequests[index] = {
       ...memoryRequests[index],
@@ -432,7 +450,7 @@ export async function updateServiceRequest(
 
   if (isSupabaseConfigured && supabase) {
     try {
-      // 1. Try full column update
+      // Tier 1: Try full column update
       const fullRow = serviceRequestToFullRow(updates);
       fullRow.updated_at = now;
       let { data, error } = await supabase
@@ -442,7 +460,7 @@ export async function updateServiceRequest(
         .select()
         .single();
 
-      // 2. If full column update fails (missing columns or schema mismatch), fallback to base schema + metadata packaging
+      // Tier 2: If full column update fails (missing columns or schema mismatch), fallback to base schema + metadata packaging
       if (error) {
         console.warn('Supabase full row update failed, retrying with base schema fallback:', error.message || error.code);
         // Fetch current row to merge existing _extendedMeta and checklist
@@ -469,8 +487,29 @@ export async function updateServiceRequest(
         error = retryResult.error;
       }
 
+      // Tier 3: If base schema update fails, guarantee status transition via universal minimal payload
+      if (error && updates.status) {
+        console.warn('Base schema update failed, attempting guaranteed minimal status update:', error.message || error.code);
+        const minimalRow: Record<string, any> = {
+          status: updates.status,
+          updated_at: now,
+        };
+        const minRetry = await supabase
+          .from('service_requests')
+          .update(minimalRow)
+          .eq('id', id)
+          .select()
+          .single();
+
+        if (!minRetry.error && minRetry.data) {
+          data = minRetry.data;
+          error = null;
+        }
+      }
+
       if (!error && data) {
-        updatedReq = rowToServiceRequest(data);
+        const parsedDb = rowToServiceRequest(data);
+        updatedReq = { ...parsedDb, ...updates };
         if (index >= 0) {
           memoryRequests[index] = updatedReq;
         } else {

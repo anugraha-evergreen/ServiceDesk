@@ -639,14 +639,23 @@ export default function AdminRequestDetailPage({
                 </span>
 
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleApproveReMeasurement}
-                    className="px-5 py-2.5 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
-                  >
-                    Approve & Issue Re-Measurement NOC
-                  </button>
-                  {request.status === 'approved' && (
+                  {request.status !== 'approved' && request.status !== 'completed' ? (
+                    <button
+                      type="button"
+                      disabled={isApproving}
+                      onClick={handleApproveReMeasurement}
+                      className="px-5 py-2.5 bg-blue-700 hover:bg-blue-800 disabled:bg-blue-600/70 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer flex items-center gap-1.5"
+                    >
+                      {isApproving && <Loader2 className="w-4 h-4 animate-spin" />}
+                      <span>{isApproving ? 'Approving...' : 'Approve & Issue Re-Measurement NOC'}</span>
+                    </button>
+                  ) : (
+                    <span className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      <span>✓ Re-Measurement Approved</span>
+                    </span>
+                  )}
+                  {(request.status === 'approved' || request.status === 'completed') && (
                     <a
                       href={`/api/pdf/noc?requestId=${request.id}&role=admin`}
                       target="_blank"
@@ -693,14 +702,22 @@ export default function AdminRequestDetailPage({
               </div>
 
               <div className="flex justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={handleApproveSaleDeed}
-                  className="px-5 py-2.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Verify Deed & Update Master Plot Record</span>
-                </button>
+                {request.status !== 'completed' ? (
+                  <button
+                    type="button"
+                    disabled={isApproving}
+                    onClick={handleApproveSaleDeed}
+                    className="px-5 py-2.5 bg-amber-700 hover:bg-amber-800 disabled:bg-amber-600/70 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {isApproving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                    <span>{isApproving ? 'Verifying...' : 'Verify Deed & Update Master Plot Record'}</span>
+                  </button>
+                ) : (
+                  <span className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>✓ Sale Deed Verified & Master Plot Record Updated</span>
+                  </span>
+                )}
               </div>
             </div>
           )}
@@ -736,14 +753,22 @@ export default function AdminRequestDetailPage({
               </div>
 
               <div className="flex justify-end pt-2">
-                <button
-                  type="button"
-                  onClick={handleApproveAmalgamation}
-                  className="px-5 py-2.5 bg-purple-700 hover:bg-purple-800 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
-                >
-                  <Layers className="w-4 h-4" />
-                  <span>Approve & Merge Plots into Unified Master Record</span>
-                </button>
+                {request.status !== 'completed' ? (
+                  <button
+                    type="button"
+                    disabled={isApproving}
+                    onClick={handleApproveAmalgamation}
+                    className="px-5 py-2.5 bg-purple-700 hover:bg-purple-800 disabled:bg-purple-600/70 text-white rounded-xl text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {isApproving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Layers className="w-4 h-4" />}
+                    <span>{isApproving ? 'Merging...' : 'Approve & Merge Plots into Unified Master Record'}</span>
+                  </button>
+                ) : (
+                  <span className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>✓ Plots Merged into Unified Master Record</span>
+                  </span>
+                )}
               </div>
             </div>
           )}

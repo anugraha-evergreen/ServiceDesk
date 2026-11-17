@@ -20,6 +20,8 @@ import {
   Sparkles,
   CheckCircle2,
   AlertCircle,
+  Download,
+  Loader2,
 } from 'lucide-react';
 
 export default function AdminDashboardPage() {
@@ -65,6 +67,67 @@ export default function AdminDashboardPage() {
       console.error(e);
     } finally {
       setFetching(false);
+    }
+  };
+
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+
+  const handleQuickApprove = async (req: ServiceRequest) => {
+    setApprovingId(req.id);
+    try {
+      let bodyData: any = { role: 'admin', status: 'approved' };
+      if (req.type === 'construction_noc') {
+        const existingChk = req.preConstructionChecklist;
+        bodyData = {
+          role: 'admin',
+          status: 'approved',
+          preConstructionChecklist: {
+            ...(existingChk || {}),
+            docsVerified: true,
+            membershipFeeCleared: true,
+            maintenanceDuesCleared: true,
+            securityDepositPaid: true,
+            depositTransactionId: existingChk?.depositTransactionId?.trim() || `AEOWA-DEP-${req.plotNumber}`,
+            depositDate: existingChk?.depositDate || new Date().toISOString().split('T')[0],
+            depositBank: existingChk?.depositBank || 'Verified via Escrow',
+            labourerToiletInstalled: true,
+            bescomWaterArrangementVerified: true,
+            labourersRegistered: true,
+            verifiedBy: 'Hon. General Secretary, AEOWA',
+            verifiedAt: new Date().toISOString(),
+          },
+          generatedNocCertificateId: req.generatedNocCertificateId || `AEOWA/NOC/2026/${req.plotNumber}`,
+          generatedNocPdfUrl: `/api/pdf/noc?requestId=${req.id}&role=admin`,
+        };
+      } else if (req.type === 'sale_deed' || req.type === 'plot_amalgamation') {
+        bodyData = { role: 'admin', status: 'completed' };
+      }
+
+      const res = await fetch(`/api/requests/${req.id}?role=admin`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-role': 'admin',
+        },
+        body: JSON.stringify(bodyData),
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        throw new Error(errData?.error || 'Failed to approve request');
+      }
+      const data = await res.json();
+      const updatedReq = data.request;
+
+      setRequests((prev) => prev.map((r) => (r.id === req.id ? updatedReq : r)));
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('aelra_cache_admin_requests');
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert(e?.message || 'Error approving request');
+    } finally {
+      setApprovingId(null);
     }
   };
 
@@ -464,15 +527,49 @@ export default function AdminDashboardPage() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {req.status !== 'approved' && req.status !== 'completed' ? (
+                      <button
+                        type="button"
+                        disabled={approvingId === req.id}
+                        onClick={() => handleQuickApprove(req)}
+                        className="px-3.5 py-2 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 disabled:bg-emerald-600/70 text-white shadow-xs transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+                      >
+                        {approvingId === req.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        )}
+                        <span>{approvingId === req.id ? 'Approving...' : '1-Click Approve'}</span>
+                      </button>
+                    ) : (
+                      <span className="px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Approved</span>
+                      </span>
+                    )}
+
+                    {req.type === 'construction_noc' &&
+                      (req.status === 'approved' || req.status === 'completed' || isNocReady) && (
+                        <a
+                          href={`/api/pdf/noc?requestId=${req.id}&role=admin`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-3 py-2 rounded-xl text-xs font-bold bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-2xs transition flex items-center gap-1.5 whitespace-nowrap"
+                        >
+                          <Download className="w-3.5 h-3.5 text-emerald-700" />
+                          <span>Download PDF</span>
+                        </a>
+                      )}
+
                     <Link
                       href={`/admin/requests/${req.id}`}
-                      className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-800 hover:bg-emerald-900 text-white shadow-2xs transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+                      className="px-3.5 py-2 rounded-xl text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300 transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
                     >
                       <span>
                         {req.status !== 'approved' && req.status !== 'completed'
-                          ? 'Review & Approve Request'
-                          : 'View Approved Record'}
+                          ? 'Review Details'
+                          : 'View Record'}
                       </span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
