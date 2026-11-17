@@ -119,10 +119,19 @@ async function main() {
   });
 
   server.listen(PORT, () => {
-    console.log('\nOpening your browser to authenticate with Google...\n');
-    console.log('If browser does not open automatically, visit this URL:\n');
+    console.log('\n======================================================');
+    console.log('👉 Opening Google Chrome to authenticate with Google...');
+    console.log('======================================================\n');
+    console.log('If Google Chrome does not open automatically, copy & paste this link into Chrome:\n');
     console.log(authUrl + '\n');
-    exec(`open "${authUrl}"`).catch(() => {});
+
+    // Explicitly launch Google Chrome on macOS
+    exec(`open -a "Google Chrome" "${authUrl}"`, (err) => {
+      if (err) {
+        // Fallback to default browser if Google Chrome is named differently
+        exec(`open "${authUrl}"`);
+      }
+    });
   });
 }
 
