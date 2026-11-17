@@ -23,13 +23,11 @@ export const Navbar: React.FC = () => {
       <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
         {/* Brand Logo & Name */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-10 h-10 rounded-xl bg-white border border-emerald-200/90 flex items-center justify-center p-1 shadow-2xs group-hover:border-emerald-500 group-hover:shadow-xs transition">
-            <img
-              src="/images/aeowa-logo.png"
-              alt="AEOWA Logo"
-              className="w-full h-full object-contain"
-            />
-          </div>
+          <img
+            src="/images/aeowa-logo.png"
+            alt="AEOWA Logo"
+            className="h-10 w-auto object-contain shrink-0"
+          />
           <div>
             <span className="font-extrabold text-base tracking-tight text-emerald-950 flex items-center gap-1">
               ANUGRAHA EVERGREEN

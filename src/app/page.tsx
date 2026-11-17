@@ -125,12 +125,12 @@ function HomeContent() {
   return (
     <div className="max-w-md mx-auto space-y-6 pt-2 sm:pt-6 animate-in fade-in duration-200">
       {/* Brand Header */}
-      <div className="text-center space-y-2.5">
-        <div className="w-16 h-16 rounded-2xl bg-white border border-emerald-200/90 flex items-center justify-center mx-auto shadow-md shadow-emerald-700/10 p-2">
+      <div className="text-center space-y-3">
+        <div className="flex items-center justify-center mx-auto">
           <img
             src="/images/aeowa-logo.png"
             alt="AEOWA Logo"
-            className="w-full h-full object-contain"
+            className="h-14 sm:h-16 w-auto object-contain"
           />
         </div>
         <div>
