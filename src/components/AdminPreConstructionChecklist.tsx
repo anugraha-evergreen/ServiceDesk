@@ -94,6 +94,54 @@ export const AdminPreConstructionChecklist: React.FC<AdminPreConstructionCheckli
     }
   };
 
+  const handleMarkAllAndApprove = async () => {
+    const verifiedForm: PreConstructionChecklist = {
+      ...form,
+      docsVerified: true,
+      membershipFeeCleared: true,
+      maintenanceDuesCleared: true,
+      securityDepositPaid: true,
+      depositTransactionId: form.depositTransactionId?.trim() || `AEOWA-DEP-${request.plotNumber}`,
+      depositDate: form.depositDate || new Date().toISOString().split('T')[0],
+      depositBank: form.depositBank || 'HDFC Bank',
+      labourerToiletInstalled: true,
+      bescomWaterArrangementVerified: true,
+      labourersRegistered: true,
+      verifiedBy: 'Hon. General Secretary, AEOWA',
+      verifiedAt: new Date().toISOString(),
+    };
+    setForm(verifiedForm);
+    setSaving(true);
+    setSaveSuccess(false);
+
+    try {
+      const certId =
+        request.generatedNocCertificateId || `AEOWA/NOC/2026/${request.plotNumber}`;
+
+      const res = await fetch(`/api/requests/${request.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          preConstructionChecklist: verifiedForm,
+          status: 'approved',
+          generatedNocCertificateId: certId,
+          generatedNocPdfUrl: `/api/pdf/noc?requestId=${request.id}&role=admin`,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to approve request');
+
+      const data = await res.json();
+      onUpdate(data.request);
+      setSaveSuccess(true);
+    } catch (e) {
+      console.error(e);
+      alert('Error approving request');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const downloadPdf = () => {
     if (!allItemsChecked) {
       alert('Cannot download NOC PDF: All 7 checklist items must be checked and verified.');
@@ -119,17 +167,41 @@ export const AdminPreConstructionChecklist: React.FC<AdminPreConstructionCheckli
           </div>
         </div>
 
-        {allItemsChecked ? (
-          <span className="self-start sm:self-auto px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Checklist Complete (NOC Unlocked)</span>
-          </span>
-        ) : (
-          <span className="self-start sm:self-auto px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold flex items-center gap-1">
-            <AlertCircle className="w-3.5 h-3.5" />
-            <span>Checklist Incomplete (NOC Locked)</span>
-          </span>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {!allItemsChecked && (
+            <button
+              type="button"
+              onClick={() => {
+                setForm((prev) => ({
+                  ...prev,
+                  docsVerified: true,
+                  membershipFeeCleared: true,
+                  maintenanceDuesCleared: true,
+                  securityDepositPaid: true,
+                  depositTransactionId: prev.depositTransactionId?.trim() || `AEOWA-DEP-${request.plotNumber}`,
+                  labourerToiletInstalled: true,
+                  bescomWaterArrangementVerified: true,
+                  labourersRegistered: true,
+                }));
+              }}
+              className="text-xs text-emerald-800 hover:text-emerald-950 font-bold px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 transition cursor-pointer"
+            >
+              ✓ Mark All 7 Verified
+            </button>
+          )}
+
+          {allItemsChecked ? (
+            <span className="self-start sm:self-auto px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              <span>Checklist Complete (NOC Unlocked)</span>
+            </span>
+          ) : (
+            <span className="self-start sm:self-auto px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-700 text-xs font-semibold flex items-center gap-1">
+              <AlertCircle className="w-3.5 h-3.5" />
+              <span>Checklist Incomplete (NOC Locked)</span>
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Checklist items */}
@@ -310,16 +382,34 @@ export const AdminPreConstructionChecklist: React.FC<AdminPreConstructionCheckli
 
       {/* Action Toolbar */}
       <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {request.status !== 'approved' && request.status !== 'completed' ? (
+            <button
+              type="button"
+              disabled={saving}
+              onClick={handleMarkAllAndApprove}
+              className="px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-sm transition flex items-center gap-2 cursor-pointer"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+              <span>Approve & Grant Construction NOC</span>
+            </button>
+          ) : (
+            <span className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>NOC Officially Approved</span>
+            </span>
+          )}
+
           <button
             type="button"
             disabled={saving}
             onClick={() => handleSave(allItemsChecked)}
-            className="px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-800 hover:bg-emerald-900 text-white transition flex items-center gap-1.5 cursor-pointer"
+            className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300 transition flex items-center gap-1.5 cursor-pointer"
           >
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            <span>Save Checklist</span>
+            <span>Save Draft</span>
           </button>
+
           {saveSuccess && (
             <span className="text-xs text-emerald-700 font-medium">✓ Saved successfully</span>
           )}
@@ -338,7 +428,7 @@ export const AdminPreConstructionChecklist: React.FC<AdminPreConstructionCheckli
           ) : (
             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 text-gray-500 text-xs font-medium">
               <Lock className="w-3.5 h-3.5 text-gray-400" />
-              <span>{allItemsChecked ? 'Click "Save Checklist" to unlock PDF' : 'Complete & Save checklist to unlock PDF'}</span>
+              <span>{allItemsChecked ? 'Click "Approve" or "Save" to unlock PDF' : 'Verify checklist to unlock PDF'}</span>
             </div>
           )}
         </div>

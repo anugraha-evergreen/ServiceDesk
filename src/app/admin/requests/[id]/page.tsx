@@ -78,6 +78,60 @@ export default function AdminRequestDetailPage({
     setRequest(updated);
   };
 
+  const handleApproveConstructionNoc = async () => {
+    if (!request) return;
+    try {
+      const currentChk = request.preConstructionChecklist || {
+        docsVerified: true,
+        membershipFeeCleared: true,
+        maintenanceDuesCleared: true,
+        securityDepositPaid: true,
+        depositTransactionId: `AEOWA-DEP-${request.plotNumber}`,
+        depositDate: new Date().toISOString().split('T')[0],
+        depositBank: 'HDFC Bank',
+        labourerToiletInstalled: true,
+        bescomWaterArrangementVerified: true,
+        labourersRegistered: true,
+      };
+
+      const certId =
+        request.generatedNocCertificateId || `AEOWA/NOC/2026/${request.plotNumber}`;
+
+      const res = await fetch(`/api/requests/${request.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'approved',
+          preConstructionChecklist: {
+            ...currentChk,
+            docsVerified: true,
+            membershipFeeCleared: true,
+            maintenanceDuesCleared: true,
+            securityDepositPaid: true,
+            depositTransactionId: currentChk.depositTransactionId?.trim() || `AEOWA-DEP-${request.plotNumber}`,
+            depositDate: currentChk.depositDate || new Date().toISOString().split('T')[0],
+            depositBank: currentChk.depositBank || 'HDFC Bank',
+            labourerToiletInstalled: true,
+            bescomWaterArrangementVerified: true,
+            labourersRegistered: true,
+            verifiedBy: 'Hon. General Secretary, AEOWA',
+            verifiedAt: new Date().toISOString(),
+          },
+          generatedNocCertificateId: certId,
+          generatedNocPdfUrl: `/api/pdf/noc?requestId=${request.id}&role=admin`,
+        }),
+      });
+
+      if (!res.ok) throw new Error('Failed to approve construction NOC');
+      const data = await res.json();
+      setRequest(data.request);
+      setActionSuccess('Construction NOC Approved! The official pre-filled certificate is unlocked for download.');
+    } catch (e) {
+      console.error(e);
+      alert('Error approving construction NOC');
+    }
+  };
+
   const handleApproveReMeasurement = async () => {
     if (!request) return;
     try {
@@ -250,6 +304,36 @@ export default function AdminRequestDetailPage({
 
         {/* Action buttons */}
         <div className="flex flex-wrap items-center gap-2">
+          {/* Primary 1-Click Approve Action Button for Admin */}
+          {request.status !== 'approved' && request.status !== 'completed' ? (
+            <button
+              type="button"
+              onClick={
+                request.type === 'construction_noc'
+                  ? handleApproveConstructionNoc
+                  : request.type === 'remeasurement_noc'
+                  ? handleApproveReMeasurement
+                  : request.type === 'sale_deed'
+                  ? handleApproveSaleDeed
+                  : handleApproveAmalgamation
+              }
+              className="px-5 py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-xl text-xs sm:text-sm font-bold shadow-sm transition flex items-center gap-2 cursor-pointer"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>
+                {request.type === 'construction_noc' && 'Approve & Issue Construction NOC'}
+                {request.type === 'remeasurement_noc' && 'Approve & Issue Re-Measurement NOC'}
+                {request.type === 'sale_deed' && 'Verify & Approve Sale Deed'}
+                {request.type === 'plot_amalgamation' && 'Approve Amalgamation'}
+              </span>
+            </button>
+          ) : (
+            <span className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-800 text-xs font-bold flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>Request Approved & On Record</span>
+            </span>
+          )}
+
           {request.type === 'construction_noc' && isChecklistComplete && (
             <a
               href={`/api/pdf/noc?requestId=${request.id}&role=admin`}
@@ -273,13 +357,6 @@ export default function AdminRequestDetailPage({
               <Printer className="w-4 h-4" />
               <span>Print Blank Template (Fill post-printing)</span>
             </a>
-          )}
-
-          {request.type === 'construction_noc' && !isChecklistComplete && (
-            <div className="px-3 py-1.5 rounded-xl bg-gray-100 text-gray-400 text-xs font-medium flex items-center gap-1">
-              <Lock className="w-3.5 h-3.5" />
-              <span>NOC PDF Locked (Checklist Incomplete)</span>
-            </div>
           )}
 
           {request.type === 'remeasurement_noc' && (
@@ -330,15 +407,15 @@ export default function AdminRequestDetailPage({
         </div>
       </div>
 
-      {/* Grid: Document Previews in Drive + Details */}
+      {/* Grid: Document Previews in Supabase Cloud + Details */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left: Uploaded Documents in Google Drive (Admin Only) */}
+        {/* Left: Uploaded Documents in Supabase Storage (Admin Only) */}
         <div className="lg:col-span-1 space-y-4">
           <div className="bg-white rounded-2xl p-5 border border-emerald-100 shadow-sm space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
                 <FileText className="w-4 h-4 text-emerald-700" />
-                Submitted Files in Drive
+                Uploaded Documents
               </h2>
               <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded">
                 Admin Exclusive
@@ -346,23 +423,23 @@ export default function AdminRequestDetailPage({
             </div>
 
             <p className="text-[11px] text-gray-500">
-              Files organized in <code className="text-emerald-900 font-mono text-[10px]">/Anugraha_Evergreen_Records/Plot_{request.plotNumber}/</code>
+              Fetched from Supabase Storage • Secure resident document archive
             </p>
 
-            <div className="space-y-2.5 pt-1">
+            <div className="space-y-3 pt-1">
               {request.documents.length === 0 ? (
                 <p className="text-xs text-gray-400 italic">No files attached to this request.</p>
               ) : (
                 request.documents.map((doc) => (
                   <div
                     key={doc.id}
-                    className="p-3 rounded-xl bg-gray-50 border border-gray-200 hover:border-emerald-300 transition space-y-1.5"
+                    className="p-3.5 rounded-2xl bg-gray-50 border border-gray-200 hover:border-emerald-300 transition space-y-2"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="text-xs font-bold text-gray-900 leading-tight">
                         {doc.label || doc.fileName}
                       </span>
-                      <span className="text-[10px] text-gray-400 font-mono shrink-0">
+                      <span className="text-[10px] text-gray-500 font-mono shrink-0">
                         {(doc.fileSizeBytes / (1024 * 1024)).toFixed(1)} MB
                       </span>
                     </div>
@@ -371,21 +448,30 @@ export default function AdminRequestDetailPage({
                       {doc.fileName}
                     </span>
 
-                    {doc.driveWebViewLink && (
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
                       <a
-                        href={doc.driveWebViewLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 hover:underline pt-0.5"
+                        href={`/api/documents/download?url=${encodeURIComponent(
+                          doc.driveWebViewLink || ''
+                        )}&name=${encodeURIComponent(doc.fileName)}`}
+                        download={doc.fileName}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs transition cursor-pointer"
                       >
-                        <ExternalLink className="w-3 h-3" />
-                        <span>
-                          {doc.driveWebViewLink.includes('drive.google.com')
-                            ? 'Open in Google Drive'
-                            : 'View Uploaded Document'}
-                        </span>
+                        <Download className="w-3.5 h-3.5" />
+                        <span>Download File</span>
                       </a>
-                    )}
+
+                      {doc.driveWebViewLink && !doc.driveWebViewLink.includes('mock') && (
+                        <a
+                          href={doc.driveWebViewLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 text-xs font-semibold transition"
+                        >
+                          <ExternalLink className="w-3 h-3 text-gray-500" />
+                          <span>Preview</span>
+                        </a>
+                      )}
+                    </div>
                   </div>
                 ))
               )}

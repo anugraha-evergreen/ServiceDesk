@@ -425,9 +425,13 @@ export default function AdminDashboardPage() {
                   <div className="flex items-center gap-2">
                     <Link
                       href={`/admin/requests/${req.id}`}
-                      className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-800 hover:bg-emerald-900 text-white shadow-2xs transition flex items-center gap-1.5 whitespace-nowrap"
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-800 hover:bg-emerald-900 text-white shadow-2xs transition flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
                     >
-                      <span>Open Review Console</span>
+                      <span>
+                        {req.status !== 'approved' && req.status !== 'completed'
+                          ? 'Review & Approve Request'
+                          : 'View Approved Record'}
+                      </span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   </div>
