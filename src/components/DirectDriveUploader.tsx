@@ -45,36 +45,19 @@ export const DirectDriveUploader: React.FC<DirectDriveUploaderProps> = ({
     setUploading(true);
 
     try {
-      // 1. Request Resumable Session URL from Next.js server route
-      const initRes = await fetch('/api/drive/initiate-upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName: selected.name,
-          mimeType: selected.type || 'application/octet-stream',
-          fileSizeBytes: selected.size,
-          plotNumber,
-          category,
-        }),
-      });
+      const formData = new FormData();
+      formData.append('file', selected);
+      formData.append('plotNumber', plotNumber);
+      formData.append('category', category);
 
-      if (!initRes.ok) {
-        const err = await initRes.json();
-        throw new Error(err.error || 'Failed to initiate Drive upload');
-      }
-
-      const { uploadUrl, fileId, folderPath, isMock } = await initRes.json();
-
-      let realDriveFileId = fileId;
-      let realDriveWebViewLink = isMock
-        ? `https://drive.google.com/file/d/mock-${category}-${plotNumber}/view`
-        : undefined;
-
-      // 2. Direct browser-to-Drive chunked PUT upload (bypassing Vercel's 4.5MB limit)
-      await new Promise<void>((resolve, reject) => {
+      // Same-origin POST upload with progress tracking (100% immune to browser CORS policies)
+      const uploadResult = await new Promise<{
+        fileId: string;
+        webViewLink?: string;
+        isMock?: boolean;
+      }>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open('PUT', uploadUrl, true);
-        xhr.setRequestHeader('Content-Type', selected.type || 'application/octet-stream');
+        xhr.open('POST', '/api/drive/upload', true);
 
         xhr.upload.onprogress = (ev) => {
           if (ev.lengthComputable) {
@@ -84,29 +67,30 @@ export const DirectDriveUploader: React.FC<DirectDriveUploaderProps> = ({
         };
 
         xhr.onload = () => {
-          // Google Drive Resumable upload returns 200 or 201 when complete
           if (xhr.status >= 200 && xhr.status < 300) {
             setProgress(100);
             try {
-              if (xhr.responseText) {
-                const parsed = JSON.parse(xhr.responseText);
-                if (parsed.id) {
-                  realDriveFileId = parsed.id;
-                  realDriveWebViewLink =
-                    parsed.webViewLink || `https://drive.google.com/file/d/${parsed.id}/view`;
-                }
-              }
+              const res = JSON.parse(xhr.responseText);
+              resolve({
+                fileId: res.fileId,
+                webViewLink: res.webViewLink,
+                isMock: res.isMock,
+              });
             } catch {
-              // response may be non-json in edge cases
+              resolve({ fileId: `drive-${Date.now()}` });
             }
-            resolve();
           } else {
-            reject(new Error(`Upload failed with status code ${xhr.status}`));
+            try {
+              const err = JSON.parse(xhr.responseText);
+              reject(new Error(err.error || `Upload failed with status ${xhr.status}`));
+            } catch {
+              reject(new Error(`Upload failed with status code ${xhr.status}`));
+            }
           }
         };
 
-        xhr.onerror = () => reject(new Error('Network error during direct upload'));
-        xhr.send(selected);
+        xhr.onerror = () => reject(new Error('Network error uploading file'));
+        xhr.send(formData);
       });
 
       const newDoc: UploadedDoc = {
@@ -116,8 +100,8 @@ export const DirectDriveUploader: React.FC<DirectDriveUploaderProps> = ({
         fileName: selected.name,
         fileSizeBytes: selected.size,
         mimeType: selected.type || 'application/octet-stream',
-        driveFileId: realDriveFileId || `drive-${Date.now()}`,
-        driveWebViewLink: realDriveWebViewLink,
+        driveFileId: uploadResult.fileId || `drive-${Date.now()}`,
+        driveWebViewLink: uploadResult.webViewLink,
         uploadedAt: new Date().toISOString(),
       };
 

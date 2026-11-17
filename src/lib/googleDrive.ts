@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import { Readable } from 'stream';
 
 const ROOT_FOLDER_NAME = 'Anugraha_Evergreen_Records';
 
@@ -228,3 +229,41 @@ export async function initiateResumableUpload(params: {
 
   return { uploadUrl, folderPath };
 }
+
+/**
+ * Direct server-side upload to Google Drive using the service account.
+ * 100% immune to browser CORS policies and adblockers.
+ */
+export async function uploadFileToDrive(params: {
+  fileName: string;
+  mimeType: string;
+  buffer: Buffer;
+  plotNumber: string;
+  category: string;
+}): Promise<{ fileId: string; webViewLink?: string; folderPath: string }> {
+  const drive = getDriveClient();
+  const { folderId, folderPath } = await getTargetFolderId(params.plotNumber, params.category);
+
+  const stream = new Readable();
+  stream.push(params.buffer);
+  stream.push(null);
+
+  const res = await drive.files.create({
+    requestBody: {
+      name: params.fileName,
+      parents: [folderId],
+    },
+    media: {
+      mimeType: params.mimeType,
+      body: stream,
+    },
+    fields: 'id,name,webViewLink',
+  });
+
+  return {
+    fileId: res.data.id!,
+    webViewLink: res.data.webViewLink || `https://drive.google.com/file/d/${res.data.id}/view`,
+    folderPath,
+  };
+}
+
