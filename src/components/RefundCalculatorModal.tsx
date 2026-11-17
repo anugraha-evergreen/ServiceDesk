@@ -1,7 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { PostConstructionRefund, ServiceRequest, DeductionItem } from '@/lib/types';
+import {
+  PostConstructionRefund,
+  ServiceRequest,
+  DeductionItem,
+  RefundInspectionPhoto,
+  MidConstructionInspectionItem,
+} from '@/lib/types';
 import { DirectDriveUploader } from './DirectDriveUploader';
 import {
   Banknote,
@@ -15,6 +21,12 @@ import {
   X,
   ShieldCheck,
   Download,
+  Camera,
+  Image as ImageIcon,
+  ExternalLink,
+  HardHat,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface RefundCalculatorModalProps {
@@ -101,6 +113,14 @@ export const RefundCalculatorModal: React.FC<RefundCalculatorModalProps> = ({
   const [saving, setSaving] = useState(false);
   const [settled, setSettled] = useState(false);
 
+  // Requirement 1 & 2: Inspection photos during refund checklist and mid-construction link
+  const [inspectionPhotos, setInspectionPhotos] = useState<RefundInspectionPhoto[]>([]);
+  const [uploadingInspectionPhoto, setUploadingInspectionPhoto] = useState(false);
+  const [selectedPhotoCategory, setSelectedPhotoCategory] = useState<string>('debris');
+  const [photoCaption, setPhotoCaption] = useState<string>('');
+  const [activePhotoLightbox, setActivePhotoLightbox] = useState<string | null>(null);
+  const [showMidConstructionLogs, setShowMidConstructionLogs] = useState(true);
+
   // Sync state whenever request changes or modal opens
   useEffect(() => {
     if (request && isOpen) {
@@ -109,6 +129,7 @@ export const RefundCalculatorModal: React.FC<RefundCalculatorModalProps> = ({
         setInspectionDate(ref.inspectionDate || new Date().toISOString().split('T')[0]);
         const existingDeductions = ref.deductionBreakdown ? [...ref.deductionBreakdown] : [];
         setDeductions(existingDeductions);
+        setInspectionPhotos(ref.inspectionPhotos || []);
 
         // Derive OK / Needs Fixing status from existing deductions
         const statusMap: Record<string, 'ok' | 'needs_fixing'> = {
@@ -143,6 +164,7 @@ export const RefundCalculatorModal: React.FC<RefundCalculatorModalProps> = ({
         });
         setInspectionDate(new Date().toISOString().split('T')[0]);
         setDeductions([]);
+        setInspectionPhotos([]);
         setRefundTxId('');
         setRefundDate(new Date().toISOString().split('T')[0]);
         setRemarks('');
@@ -150,6 +172,7 @@ export const RefundCalculatorModal: React.FC<RefundCalculatorModalProps> = ({
       }
       setNewReason('');
       setNewAmount('');
+      setPhotoCaption('');
     }
   }, [request, isOpen]);
 
@@ -224,6 +247,55 @@ export const RefundCalculatorModal: React.FC<RefundCalculatorModalProps> = ({
     }
   };
 
+  const handleUploadInspectionPhoto = async (file: File) => {
+    setUploadingInspectionPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('plotNumber', request.plotNumber);
+      formData.append('category', 'refund_proof');
+      formData.append(
+        'label',
+        `Refund Inspection Proof - Plot ${request.plotNumber} - ${selectedPhotoCategory}`
+      );
+
+      const res = await fetch('/api/drive/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Upload failed');
+      }
+
+      const catObj = inspectionCategories.find((c) => c.id === selectedPhotoCategory);
+      const catTitle = catObj ? catObj.name : 'General Site Inspection';
+
+      const newPhoto: RefundInspectionPhoto = {
+        id: `photo_${Date.now()}`,
+        categoryKey: selectedPhotoCategory,
+        categoryTitle: catTitle,
+        caption: photoCaption.trim() || undefined,
+        imageUrl: data.webViewLink,
+        fileName: file.name,
+        uploadedAt: new Date().toISOString(),
+      };
+
+      setInspectionPhotos((prev) => [...prev, newPhoto]);
+      setPhotoCaption('');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Upload failed';
+      alert(`Error uploading inspection photo: ${msg}`);
+    } finally {
+      setUploadingInspectionPhoto(false);
+    }
+  };
+
+  const handleRemoveInspectionPhoto = (id: string) => {
+    setInspectionPhotos((prev) => prev.filter((p) => p.id !== id));
+  };
+
   const handleSaveRefund = async () => {
     setSaving(true);
     try {
@@ -250,6 +322,7 @@ export const RefundCalculatorModal: React.FC<RefundCalculatorModalProps> = ({
         processedBy: 'Managing Committee & Association Treasurer',
         processedAt: new Date().toISOString(),
         remarks,
+        inspectionPhotos,
       };
 
       const res = await fetch(`/api/requests/${request.id}?role=admin`, {
@@ -343,6 +416,141 @@ export const RefundCalculatorModal: React.FC<RefundCalculatorModalProps> = ({
             </div>
           )}
 
+          {/* Mid-Construction Review History & Photo Evidence */}
+          {request.midConstructionReviews && request.midConstructionReviews.length > 0 && (
+            <div className="bg-amber-50/80 rounded-xl p-4 border border-amber-300 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <HardHat className="w-4 h-4 text-amber-800" />
+                  <h3 className="text-xs font-bold text-amber-950 uppercase tracking-wider">
+                    Mid-Construction Inspection Logs & Photo Evidence
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowMidConstructionLogs((prev) => !prev)}
+                  className="text-xs text-amber-900 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span>{showMidConstructionLogs ? 'Hide Logs' : 'View Logs'}</span>
+                  {showMidConstructionLogs ? (
+                    <ChevronUp className="w-3.5 h-3.5" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              </div>
+
+              <p className="text-[11px] text-amber-800">
+                Field observations and photos recorded during ongoing construction for Plot #{request.plotNumber}.
+                Review these to inform final deposit deduction decisions.
+              </p>
+
+              {showMidConstructionLogs && (
+                <div className="space-y-2 pt-1">
+                  {request.midConstructionReviews.map((item) => {
+                    const isVio = item.status === 'violation';
+                    const isComp = item.status === 'compliant';
+                    return (
+                      <div
+                        key={item.id}
+                        className={`p-3 rounded-lg border text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                          isVio
+                            ? 'bg-rose-50 border-rose-200 text-rose-950'
+                            : isComp
+                            ? 'bg-white border-emerald-200 text-gray-800'
+                            : 'bg-white border-gray-200 text-gray-600'
+                        }`}
+                      >
+                        <div className="space-y-1 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold">{item.title}</span>
+                            {isVio && (
+                              <span className="text-[10px] font-bold text-rose-800 bg-rose-100 border border-rose-300 px-1.5 py-0.2 rounded">
+                                Violation Logged
+                              </span>
+                            )}
+                            {isComp && (
+                              <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-1.5 py-0.2 rounded">
+                                Compliant
+                              </span>
+                            )}
+                          </div>
+                          {item.notes && (
+                            <p className="text-[11px] italic text-gray-700">
+                              &ldquo;{item.notes}&rdquo;
+                            </p>
+                          )}
+                          {item.inspectedAt && (
+                            <span className="text-[10px] text-gray-400 block font-mono">
+                              Date:{' '}
+                              {new Date(item.inspectedAt).toLocaleDateString('en-IN', {
+                                day: '2-digit',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {item.imageUrl && (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setActivePhotoLightbox(item.imageUrl || null)}
+                                className="relative w-9 h-9 rounded-md overflow-hidden bg-gray-100 border border-gray-300 group shadow-2xs cursor-pointer"
+                                title="Click to view mid-construction photo"
+                              >
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={item.imageUrl}
+                                  alt="Mid-construction evidence"
+                                  className="w-full h-full object-cover group-hover:scale-105 transition"
+                                />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setActivePhotoLightbox(item.imageUrl || null)}
+                                className="text-[11px] text-emerald-800 font-semibold hover:underline flex items-center gap-0.5 cursor-pointer"
+                              >
+                                <span>Photo</span>
+                                <ExternalLink className="w-2.5 h-2.5" />
+                              </button>
+                            </div>
+                          )}
+
+                          {isVio && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const exists = deductions.some((d) => d.id === `mid-${item.id}`);
+                                if (!exists) {
+                                  setDeductions((prev) => [
+                                    ...prev,
+                                    {
+                                      id: `mid-${item.id}`,
+                                      reason: `Mid-Construction: ${item.title} (${item.notes || 'Damage/Violation'})`,
+                                      amount: 3000,
+                                    },
+                                  ]);
+                                }
+                              }}
+                              className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-md text-[11px] font-bold transition shadow-2xs flex items-center gap-1 cursor-pointer"
+                              title="Add this violation as an itemized refund deduction"
+                            >
+                              <Plus className="w-3 h-3" />
+                              <span>Add Deduction</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Section 1: Managing Committee Inspection Checklist with Okay / Needs Fixing Toggles */}
           <div className="bg-emerald-50/60 rounded-xl p-4 border border-emerald-200 space-y-3.5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
@@ -423,6 +631,126 @@ export const RefundCalculatorModal: React.FC<RefundCalculatorModalProps> = ({
                   </div>
                 );
               })}
+            </div>
+
+            {/* Site Inspection Photo Evidence Upload & Gallery */}
+            <div className="pt-3.5 border-t border-emerald-200/80 space-y-3">
+              <div>
+                <h4 className="text-xs font-bold text-emerald-950 uppercase tracking-wider flex items-center gap-1.5">
+                  <Camera className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>Upload Site Inspection Photos / Damage Evidence</span>
+                </h4>
+                <p className="text-[11px] text-emerald-800">
+                  Attach photos of site cleanliness, road/curb damage, debris, or functional RWH pit to support deduction decisions.
+                </p>
+              </div>
+
+              {/* Upload controls */}
+              <div className="p-3 bg-white rounded-xl border border-emerald-200 flex flex-col sm:flex-row items-center gap-2.5">
+                <select
+                  value={selectedPhotoCategory}
+                  onChange={(e) => setSelectedPhotoCategory(e.target.value)}
+                  className="w-full sm:w-auto text-xs px-2.5 py-2 bg-gray-50 border border-gray-200 rounded-lg font-medium text-gray-800 focus:outline-emerald-600 cursor-pointer"
+                >
+                  <option value="debris">1. Debris Removal</option>
+                  <option value="roads">2. Layout Asphalt Roads</option>
+                  <option value="drains">3. Stormwater Drains</option>
+                  <option value="electrical">4. Streetlights & Cabling</option>
+                  <option value="rwh">5. Rainwater Harvesting</option>
+                  <option value="boundary_trees">6. Boundary & Trees</option>
+                  <option value="general">General Inspection</option>
+                </select>
+
+                <input
+                  type="text"
+                  placeholder="Photo Caption (e.g. Broken asphalt curb, Drain silt)"
+                  value={photoCaption}
+                  onChange={(e) => setPhotoCaption(e.target.value)}
+                  className="w-full sm:flex-1 text-xs px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-800 focus:outline-emerald-600"
+                />
+
+                <label
+                  className={`w-full sm:w-auto px-4 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0 ${
+                    uploadingInspectionPhoto
+                      ? 'bg-gray-100 text-gray-400 border border-gray-200 pointer-events-none'
+                      : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs'
+                  }`}
+                >
+                  {uploadingInspectionPhoto ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Uploading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="w-3.5 h-3.5" />
+                      <span>Upload Photo</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleUploadInspectionPhoto(f);
+                        }}
+                      />
+                    </>
+                  )}
+                </label>
+              </div>
+
+              {/* Uploaded inspection photos gallery */}
+              {inspectionPhotos.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  {inspectionPhotos.map((photo) => (
+                    <div
+                      key={photo.id}
+                      className="p-2.5 bg-white rounded-xl border border-gray-200 shadow-2xs flex items-center justify-between gap-2.5"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <button
+                          type="button"
+                          onClick={() => setActivePhotoLightbox(photo.imageUrl)}
+                          className="relative w-12 h-12 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 group shrink-0 cursor-pointer"
+                          title="Click to view full photo"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={photo.imageUrl}
+                            alt="Inspection finding"
+                            className="w-full h-full object-cover group-hover:scale-105 transition"
+                          />
+                        </button>
+                        <div className="min-w-0">
+                          <span className="text-[10px] font-bold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 inline-block truncate max-w-[150px]">
+                            {photo.categoryTitle || 'Inspection Photo'}
+                          </span>
+                          <span className="text-xs font-semibold text-gray-900 block truncate">
+                            {photo.caption || photo.fileName}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setActivePhotoLightbox(photo.imageUrl)}
+                            className="text-[10px] text-emerald-700 hover:underline flex items-center gap-0.5 cursor-pointer"
+                          >
+                            <span>Enlarge Image</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveInspectionPhoto(photo.id)}
+                        className="p-1.5 text-gray-400 hover:text-rose-600 rounded-lg transition cursor-pointer"
+                        title="Delete photo"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -679,6 +1007,51 @@ export const RefundCalculatorModal: React.FC<RefundCalculatorModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Lightbox Photo Preview Modal */}
+      {activePhotoLightbox && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => setActivePhotoLightbox(null)}
+        >
+          <div
+            className="relative max-w-3xl max-h-[90vh] bg-black rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-3 bg-gray-900/90 text-white flex items-center justify-between">
+              <span className="text-xs font-medium flex items-center gap-1.5">
+                <ImageIcon className="w-4 h-4 text-emerald-400" />
+                <span>Site Inspection Photo Evidence • Plot #{request.plotNumber}</span>
+              </span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={activePhotoLightbox}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs px-2.5 py-1 bg-white/10 hover:bg-white/20 rounded-md text-emerald-200 transition"
+                >
+                  Open Original
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setActivePhotoLightbox(null)}
+                  className="p-1 rounded-md text-gray-400 hover:text-white hover:bg-white/10 transition cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+            <div className="p-2 overflow-auto flex items-center justify-center bg-black/90">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={activePhotoLightbox}
+                alt="Enlarged inspection evidence"
+                className="max-h-[75vh] w-auto object-contain rounded-lg"
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

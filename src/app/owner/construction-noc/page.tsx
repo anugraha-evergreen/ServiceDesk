@@ -6,6 +6,7 @@ import { useSession } from '@/lib/session';
 import { UploadedDoc } from '@/lib/types';
 import { DirectDriveUploader } from '@/components/DirectDriveUploader';
 import { ConstructionRulesModal } from '@/components/ConstructionRulesModal';
+import { OwnerConstructionRuleCards } from '@/components/OwnerConstructionRuleCards';
 import {
   CONSTRUCTION_RULES_TITLE,
   CONSTRUCTION_RULES_VERSION,
@@ -381,56 +382,12 @@ function ConstructionNocForm() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Step 1: Mandatory Construction Rules (Displayed here when entering Construction NOC) */}
-        <div className="bg-white rounded-2xl p-5 border border-emerald-100 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-700" />
-              1. Mandatory Construction Rules & Guidelines Acceptance
-            </h2>
-            <span className="text-[11px] text-emerald-700 font-mono">
-              Ver: {CONSTRUCTION_RULES_VERSION}
-            </span>
-          </div>
-
-          <p className="text-xs text-gray-600 leading-relaxed">
-            Layout bylaws mandate strict adherence to working hours (8 AM - 6 PM Mon-Sat), no heavy
-            machinery on Sundays, on-site labourer toilets, and road protection.
-          </p>
-
-          <div className="p-3.5 bg-emerald-50/70 rounded-xl border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="text-xs">
-              <span className="font-semibold text-emerald-950 block">
-                {CONSTRUCTION_RULES_TITLE}
-              </span>
-              <span className="text-[11px] text-emerald-800">
-                Includes ₹20,000 security deposit terms, worker sanitation & road damage rules.
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setModalOpen(true)}
-              className="px-3.5 py-2 bg-white text-emerald-800 border border-emerald-300 hover:bg-emerald-100 rounded-lg text-xs font-bold transition shrink-0 cursor-pointer"
-            >
-              Read Rules & Guidelines
-            </button>
-          </div>
-
-          <label className="flex items-start gap-2.5 pt-1 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={rulesAccepted}
-              onChange={(e) => setRulesAccepted(e.target.checked)}
-              className="mt-0.5 w-4 h-4 text-emerald-600 rounded focus:ring-emerald-500 accent-emerald-600 cursor-pointer"
-            />
-            <span className="text-xs sm:text-sm text-gray-800 font-medium">
-              I have read, understood, and accept the{' '}
-              <strong className="text-emerald-800">Mandatory Construction Rules & Guidelines</strong>{' '}
-              on behalf of myself and my contractor. *
-            </span>
-          </label>
-        </div>
+        {/* Step 1: Mandatory Construction Rules Progressive Card Deck */}
+        <OwnerConstructionRuleCards
+          rulesAccepted={rulesAccepted}
+          onAcceptChange={setRulesAccepted}
+          isEditing={isEditing}
+        />
 
         {/* Step 2: Required Document Uploads */}
         <div className="bg-white rounded-2xl p-5 border border-emerald-100 shadow-sm space-y-4">

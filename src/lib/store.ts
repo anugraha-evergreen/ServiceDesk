@@ -68,6 +68,7 @@ function rowToServiceRequest(row: any): ServiceRequest {
       : undefined,
     reMeasurementChecklist: row.re_measurement_checklist,
     postConstructionRefund: row.post_construction_refund,
+    midConstructionReviews: row.mid_construction_reviews || meta.midConstructionReviews,
     saleDeedDetails: row.sale_deed_details || meta.saleDeedDetails,
     amalgamationDetails: row.amalgamation_details || meta.amalgamationDetails,
     adminNotes: row.admin_notes || meta.adminNotes,
@@ -99,6 +100,7 @@ function serviceRequestToFullRow(req: Partial<ServiceRequest>): any {
   if (req.preConstructionChecklist !== undefined) row.pre_construction_checklist = req.preConstructionChecklist;
   if (req.reMeasurementChecklist !== undefined) row.re_measurement_checklist = req.reMeasurementChecklist;
   if (req.postConstructionRefund !== undefined) row.post_construction_refund = req.postConstructionRefund;
+  if (req.midConstructionReviews !== undefined) row.mid_construction_reviews = req.midConstructionReviews;
   if (req.saleDeedDetails !== undefined) row.sale_deed_details = req.saleDeedDetails;
   if (req.amalgamationDetails !== undefined) row.amalgamation_details = req.amalgamationDetails;
   if (req.adminNotes !== undefined) row.admin_notes = req.adminNotes;
@@ -140,6 +142,7 @@ function serviceRequestToBaseRow(
   if (req.ownerContactPhone !== undefined) { meta.ownerContactPhone = req.ownerContactPhone; hasMetaUpdates = true; }
   if (req.contractorName !== undefined) { meta.contractorName = req.contractorName; hasMetaUpdates = true; }
   if (req.contractorPhone !== undefined) { meta.contractorPhone = req.contractorPhone; hasMetaUpdates = true; }
+  if (req.midConstructionReviews !== undefined) { meta.midConstructionReviews = req.midConstructionReviews; hasMetaUpdates = true; }
   if (req.saleDeedDetails !== undefined) { meta.saleDeedDetails = req.saleDeedDetails; hasMetaUpdates = true; }
   if (req.amalgamationDetails !== undefined) { meta.amalgamationDetails = req.amalgamationDetails; hasMetaUpdates = true; }
   if (req.adminNotes !== undefined) { meta.adminNotes = req.adminNotes; hasMetaUpdates = true; }

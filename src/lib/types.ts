@@ -75,6 +75,16 @@ export interface DeductionItem {
   amount: number;
 }
 
+export interface RefundInspectionPhoto {
+  id: string;
+  categoryKey?: string;
+  categoryTitle?: string;
+  caption?: string;
+  imageUrl: string;
+  fileName: string;
+  uploadedAt: string;
+}
+
 export interface PostConstructionRefund {
   inspectionDate?: string;
   debrisRemoved: boolean;
@@ -94,6 +104,19 @@ export interface PostConstructionRefund {
   processedBy?: string;
   processedAt?: string;
   remarks?: string;
+  inspectionPhotos?: RefundInspectionPhoto[];
+}
+
+export interface MidConstructionInspectionItem {
+  id: string;
+  title: string;
+  description: string;
+  status: 'compliant' | 'violation' | 'pending';
+  notes?: string;
+  imageUrl?: string;
+  imageFileName?: string;
+  inspectedAt?: string;
+  inspectedBy?: string;
 }
 
 export interface ReMeasurementChecklist {
@@ -128,6 +151,7 @@ export interface ServiceRequest {
   rulesAcceptedAt?: string;
   preConstructionChecklist?: PreConstructionChecklist;
   postConstructionRefund?: PostConstructionRefund;
+  midConstructionReviews?: MidConstructionInspectionItem[];
   reMeasurementChecklist?: ReMeasurementChecklist;
 
   saleDeedDetails?: {

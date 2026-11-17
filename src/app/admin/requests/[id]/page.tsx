@@ -8,6 +8,7 @@ import { ServiceRequest } from '@/lib/types';
 import { StatusBadge } from '@/components/StatusBadge';
 import { AdminPreConstructionChecklist } from '@/components/AdminPreConstructionChecklist';
 import { RefundCalculatorModal } from '@/components/RefundCalculatorModal';
+import { MidConstructionReviewModule } from '@/components/MidConstructionReviewModule';
 import {
   ShieldCheck,
   ArrowLeft,
@@ -565,7 +566,10 @@ export default function AdminRequestDetailPage({
         {/* Right: Verification Checklists & Actions */}
         <div className="lg:col-span-2 space-y-5">
           {request.type === 'construction_noc' && (
-            <AdminPreConstructionChecklist request={request} onUpdate={handleUpdate} />
+            <>
+              <AdminPreConstructionChecklist request={request} onUpdate={handleUpdate} />
+              <MidConstructionReviewModule request={request} onUpdate={handleUpdate} />
+            </>
           )}
 
           {request.type === 'remeasurement_noc' && (
