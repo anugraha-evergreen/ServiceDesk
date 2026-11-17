@@ -29,9 +29,48 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const updates = await req.json();
+    const { searchParams } = new URL(req.url);
+    const role = (searchParams.get('role') || 'owner') as UserRole;
+    const body = await req.json();
 
-    const updated = await updateServiceRequest(id, updates);
+    // Verify existing record
+    const existing = await getRequestById(id, 'admin');
+    if (!existing) {
+      return NextResponse.json({ error: 'Request not found' }, { status: 404 });
+    }
+
+    // Role-based validation
+    if (role === 'owner') {
+      // 1. Strict edit lock: Owners cannot edit once approved or completed
+      if (existing.status === 'approved' || existing.status === 'completed') {
+        return NextResponse.json(
+          {
+            error:
+              'This application has already been approved by AEOWA Management Committee and cannot be edited. Please contact layout administration for any further inquiries.',
+          },
+          { status: 400 }
+        );
+      }
+
+      // 2. Strict sanitization: Owners can only update their applicant details & documents
+      const ownerAllowedUpdates: Record<string, any> = {};
+      if (body.ownerContactName !== undefined) ownerAllowedUpdates.ownerContactName = body.ownerContactName;
+      if (body.ownerContactPhone !== undefined) ownerAllowedUpdates.ownerContactPhone = body.ownerContactPhone;
+      if (body.contractorName !== undefined) ownerAllowedUpdates.contractorName = body.contractorName;
+      if (body.contractorPhone !== undefined) ownerAllowedUpdates.contractorPhone = body.contractorPhone;
+      if (body.supervisorPhone !== undefined) ownerAllowedUpdates.supervisorPhone = body.supervisorPhone;
+      if (body.emergencyPhone !== undefined) ownerAllowedUpdates.emergencyPhone = body.emergencyPhone;
+      if (body.documents !== undefined) ownerAllowedUpdates.documents = body.documents;
+      if (body.saleDeedDetails !== undefined) ownerAllowedUpdates.saleDeedDetails = body.saleDeedDetails;
+      if (body.amalgamationDetails !== undefined) ownerAllowedUpdates.amalgamationDetails = body.amalgamationDetails;
+      if (body.adminNotes !== undefined) ownerAllowedUpdates.adminNotes = body.adminNotes;
+
+      const updated = await updateServiceRequest(id, ownerAllowedUpdates);
+      return NextResponse.json({ success: true, request: updated });
+    }
+
+    // Admin role updates
+    const updated = await updateServiceRequest(id, body);
     if (!updated) {
       return NextResponse.json({ error: 'Request not found' }, { status: 404 });
     }

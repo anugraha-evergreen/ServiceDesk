@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UploadedDoc } from '@/lib/types';
 import { UploadCloud, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -28,6 +28,12 @@ export const DirectDriveUploader: React.FC<DirectDriveUploaderProps> = ({
   const [uploading, setUploading] = useState<boolean>(false);
   const [completedDoc, setCompletedDoc] = useState<UploadedDoc | undefined>(existingDoc);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (existingDoc) {
+      setCompletedDoc(existingDoc);
+    }
+  }, [existingDoc]);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;

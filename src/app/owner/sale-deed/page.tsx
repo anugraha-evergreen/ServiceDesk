@@ -1,14 +1,32 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from '@/lib/session';
 import { UploadedDoc } from '@/lib/types';
 import { DirectDriveUploader } from '@/components/DirectDriveUploader';
-import { FileText, CheckCircle2, Loader2, AlertCircle } from 'lucide-react';
+import { FileText, CheckCircle2, Loader2, AlertCircle, Pencil, Lock } from 'lucide-react';
 
 export default function SaleDeedUploadPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-20 text-center text-sm text-gray-500 animate-pulse">
+          Loading Sale Deed application...
+        </div>
+      }
+    >
+      <SaleDeedForm />
+    </Suspense>
+  );
+}
+
+function SaleDeedForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('edit');
+  const isEditing = Boolean(editId);
+
   const { session, loading } = useSession();
 
   const [saleDeedDoc, setSaleDeedDoc] = useState<UploadedDoc | null>(null);
@@ -19,15 +37,53 @@ export default function SaleDeedUploadPage() {
   const [subRegistrarOffice, setSubRegistrarOffice] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLocked, setIsLocked] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(false);
 
   useEffect(() => {
     if (!loading && (!session || session.role !== 'owner')) {
       router.push('/owner/login');
     }
-    if (session?.ownerName) {
+    if (session?.ownerName && !isEditing) {
       setNewOwner(session.ownerName);
     }
-  }, [session, loading, router]);
+  }, [session, loading, router, isEditing]);
+
+  // Load existing request data if in edit mode
+  useEffect(() => {
+    if (editId) {
+      setLoadingEdit(true);
+      fetch(`/api/requests/${editId}?role=owner`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.request) {
+            const req = data.request;
+            if (req.status === 'approved' || req.status === 'completed') {
+              setIsLocked(true);
+            }
+            if (req.saleDeedDetails) {
+              setPrevOwner(req.saleDeedDetails.previousOwnerName || '');
+              setNewOwner(req.saleDeedDetails.newOwnerName || '');
+              setDeedNumber(req.saleDeedDetails.deedNumber || '');
+              if (req.saleDeedDetails.registrationDate) {
+                setRegDate(req.saleDeedDetails.registrationDate);
+              }
+              setSubRegistrarOffice(req.saleDeedDetails.subRegistrarOffice || '');
+            }
+            if (req.documents && req.documents.length > 0) {
+              setSaleDeedDoc(req.documents[0]);
+            }
+          } else {
+            setError('Request not found or unavailable for editing.');
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          setError('Failed to load application details.');
+        })
+        .finally(() => setLoadingEdit(false));
+    }
+  }, [editId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,26 +99,44 @@ export default function SaleDeedUploadPage() {
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/requests', {
-        method: 'POST',
+      const endpoint = isEditing ? `/api/requests/${editId}?role=owner` : '/api/requests';
+      const method = isEditing ? 'PATCH' : 'POST';
+      const payload = isEditing
+        ? {
+            saleDeedDetails: {
+              previousOwnerName: prevOwner.trim(),
+              newOwnerName: newOwner.trim(),
+              deedNumber: deedNumber.trim(),
+              registrationDate: regDate,
+              subRegistrarOffice: subRegistrarOffice.trim(),
+            },
+            documents: [saleDeedDoc],
+          }
+        : {
+            plotNumber: session?.plotNumber,
+            ownerName: newOwner.trim(),
+            phone: session?.phone,
+            type: 'sale_deed',
+            saleDeedDetails: {
+              previousOwnerName: prevOwner.trim(),
+              newOwnerName: newOwner.trim(),
+              deedNumber: deedNumber.trim(),
+              registrationDate: regDate,
+              subRegistrarOffice: subRegistrarOffice.trim(),
+            },
+            documents: [saleDeedDoc],
+          };
+
+      const res = await fetch(endpoint, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          plotNumber: session?.plotNumber,
-          ownerName: newOwner.trim(),
-          phone: session?.phone,
-          type: 'sale_deed',
-          saleDeedDetails: {
-            previousOwnerName: prevOwner.trim(),
-            newOwnerName: newOwner.trim(),
-            deedNumber: deedNumber.trim(),
-            registrationDate: regDate,
-            subRegistrarOffice: subRegistrarOffice.trim(),
-          },
-          documents: [saleDeedDoc],
-        }),
+        body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error('Failed to submit Sale Deed');
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || (isEditing ? 'Failed to update Sale Deed' : 'Failed to submit Sale Deed'));
+      }
 
       router.push('/owner/dashboard');
     } catch (err: unknown) {
@@ -72,17 +146,75 @@ export default function SaleDeedUploadPage() {
     }
   };
 
-  if (loading) return null;
+  if (loading || loadingEdit) {
+    return (
+      <div className="py-20 text-center text-sm text-gray-500 animate-pulse">
+        {loadingEdit ? 'Loading application for editing...' : 'Loading plot details...'}
+      </div>
+    );
+  }
+
+  if (isLocked) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6 py-12 text-center animate-in fade-in duration-200">
+        <div className="bg-white rounded-3xl p-8 border border-gray-200 shadow-sm space-y-4">
+          <div className="p-3 w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 mx-auto flex items-center justify-center">
+            <Lock className="w-6 h-6" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900">Application Locked (Approved)</h2>
+          <p className="text-xs text-gray-600 max-w-md mx-auto leading-relaxed">
+            Application <strong>#{editId}</strong> has already been approved or processed by the AEOWA Management Committee. Once approved, applications cannot be altered directly by owners.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push('/owner/dashboard')}
+            className="px-5 py-2.5 rounded-xl bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold transition cursor-pointer"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-8 animate-in fade-in duration-200">
+      {/* Edit Mode Alert Banner */}
+      {isEditing && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-100 rounded-xl text-amber-800 shrink-0">
+              <Pencil className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold bg-amber-200/80 px-2 py-0.5 rounded text-amber-900">
+                  {editId}
+                </span>
+                <span className="text-xs font-bold text-amber-900">Editing Pre-Approval Application</span>
+              </div>
+              <p className="text-xs text-amber-800 mt-0.5">
+                Update conveyance details or replace attached deed document and click &quot;Save Changes&quot;.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push('/owner/dashboard')}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-300 bg-white hover:bg-amber-100 text-amber-900 transition self-start sm:self-auto cursor-pointer"
+          >
+            Cancel Edit
+          </button>
+        </div>
+      )}
+
       <div className="space-y-1">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-100 text-amber-800 text-xs font-semibold">
           <FileText className="w-4 h-4" />
-          <span>Title & Ownership Registry</span>
+          <span>{isEditing ? 'Edit Submission' : 'Title & Ownership Registry'}</span>
         </div>
         <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight">
-          Registered Sale Deed Submission
+          {isEditing ? 'Modify Sale Deed Submission' : 'Registered Sale Deed Submission'}
         </h1>
         <p className="text-xs text-gray-500">
           Plot No. {session?.plotNumber} • Updates Association Master Ownership Records
@@ -197,7 +329,7 @@ export default function SaleDeedUploadPage() {
           <button
             type="button"
             onClick={() => router.push('/owner/dashboard')}
-            className="px-4 py-2 text-xs sm:text-sm font-semibold text-gray-600"
+            className="px-4 py-2 text-xs sm:text-sm font-semibold text-gray-600 cursor-pointer"
           >
             Cancel
           </button>
@@ -205,14 +337,14 @@ export default function SaleDeedUploadPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="px-6 py-2.5 bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition flex items-center gap-2"
+            className="px-6 py-2.5 bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer"
           >
             {submitting ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <CheckCircle2 className="w-4 h-4" />
             )}
-            <span>Submit Sale Deed for Admin Verification</span>
+            <span>{isEditing ? 'Save Changes to Sale Deed' : 'Submit Sale Deed for Admin Verification'}</span>
           </button>
         </div>
       </form>

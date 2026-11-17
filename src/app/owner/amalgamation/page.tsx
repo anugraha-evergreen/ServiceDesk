@@ -1,14 +1,32 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from '@/lib/session';
 import { Plot, UploadedDoc } from '@/lib/types';
 import { DirectDriveUploader } from '@/components/DirectDriveUploader';
-import { Layers, FileText, CheckCircle2, Loader2, AlertCircle, Plus, X } from 'lucide-react';
+import { Layers, FileText, CheckCircle2, Loader2, AlertCircle, Plus, X, Pencil, Lock } from 'lucide-react';
 
 export default function PlotAmalgamationPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-20 text-center text-sm text-gray-500 animate-pulse">
+          Loading Plot Amalgamation application...
+        </div>
+      }
+    >
+      <PlotAmalgamationForm />
+    </Suspense>
+  );
+}
+
+function PlotAmalgamationForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('edit');
+  const isEditing = Boolean(editId);
+
   const { session, loading } = useSession();
 
   const [allPlots, setAllPlots] = useState<Plot[]>([]);
@@ -21,6 +39,8 @@ export default function PlotAmalgamationPage() {
   const [sanctionNumber, setSanctionNumber] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLocked, setIsLocked] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(false);
 
   useEffect(() => {
     if (!loading && (!session || session.role !== 'owner')) {
@@ -35,6 +55,44 @@ export default function PlotAmalgamationPage() {
       })
       .catch(console.error);
   }, [session, loading, router]);
+
+  // Load existing request data if in edit mode
+  useEffect(() => {
+    if (editId) {
+      setLoadingEdit(true);
+      fetch(`/api/requests/${editId}?role=owner`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.request) {
+            const req = data.request;
+            if (req.status === 'approved' || req.status === 'completed') {
+              setIsLocked(true);
+            }
+            if (req.amalgamationDetails) {
+              if (Array.isArray(req.amalgamationDetails.secondaryPlotNumbers)) {
+                setSecondaryPlots(req.amalgamationDetails.secondaryPlotNumbers);
+              }
+              if (req.amalgamationDetails.sanctionOrderNumber) {
+                setSanctionNumber(req.amalgamationDetails.sanctionOrderNumber);
+              }
+              if (req.amalgamationDetails.reason) {
+                setReason(req.amalgamationDetails.reason);
+              }
+            }
+            if (req.documents && req.documents.length > 0) {
+              setSanctionDoc(req.documents[0]);
+            }
+          } else {
+            setError('Request not found or unavailable for editing.');
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          setError('Failed to load application details.');
+        })
+        .finally(() => setLoadingEdit(false));
+    }
+  }, [editId]);
 
   const addPlot = (pNum: string) => {
     const clean = pNum.trim();
@@ -68,25 +126,42 @@ export default function PlotAmalgamationPage() {
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/requests', {
-        method: 'POST',
+      const endpoint = isEditing ? `/api/requests/${editId}?role=owner` : '/api/requests';
+      const method = isEditing ? 'PATCH' : 'POST';
+      const payload = isEditing
+        ? {
+            amalgamationDetails: {
+              secondaryPlotNumbers: secondaryPlots,
+              targetUnifiedPlotNumber: targetUnified,
+              sanctionOrderNumber: sanctionNumber.trim(),
+              reason: reason.trim(),
+            },
+            documents: [sanctionDoc],
+          }
+        : {
+            plotNumber: session?.plotNumber,
+            ownerName: session?.ownerName,
+            phone: session?.phone,
+            type: 'plot_amalgamation',
+            amalgamationDetails: {
+              secondaryPlotNumbers: secondaryPlots,
+              targetUnifiedPlotNumber: targetUnified,
+              sanctionOrderNumber: sanctionNumber.trim(),
+              reason: reason.trim(),
+            },
+            documents: [sanctionDoc],
+          };
+
+      const res = await fetch(endpoint, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          plotNumber: session?.plotNumber,
-          ownerName: session?.ownerName,
-          phone: session?.phone,
-          type: 'plot_amalgamation',
-          amalgamationDetails: {
-            secondaryPlotNumbers: secondaryPlots,
-            targetUnifiedPlotNumber: targetUnified,
-            sanctionOrderNumber: sanctionNumber.trim(),
-            reason: reason.trim(),
-          },
-          documents: [sanctionDoc],
-        }),
+        body: JSON.stringify(payload),
       });
 
-      if (!res.ok) throw new Error('Failed to submit amalgamation request');
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || (isEditing ? 'Failed to update request' : 'Failed to submit request'));
+      }
 
       router.push('/owner/dashboard');
     } catch (err: unknown) {
@@ -96,17 +171,75 @@ export default function PlotAmalgamationPage() {
     }
   };
 
-  if (loading) return null;
+  if (loading || loadingEdit) {
+    return (
+      <div className="py-20 text-center text-sm text-gray-500 animate-pulse">
+        {loadingEdit ? 'Loading application for editing...' : 'Loading plot details...'}
+      </div>
+    );
+  }
+
+  if (isLocked) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6 py-12 text-center animate-in fade-in duration-200">
+        <div className="bg-white rounded-3xl p-8 border border-gray-200 shadow-sm space-y-4">
+          <div className="p-3 w-12 h-12 rounded-2xl bg-purple-100 text-purple-800 mx-auto flex items-center justify-center">
+            <Lock className="w-6 h-6" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900">Application Locked (Approved)</h2>
+          <p className="text-xs text-gray-600 max-w-md mx-auto leading-relaxed">
+            Application <strong>#{editId}</strong> has already been approved or processed by the AEOWA Management Committee. Once approved, applications cannot be altered directly by owners.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push('/owner/dashboard')}
+            className="px-5 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition cursor-pointer"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-8 animate-in fade-in duration-200">
+      {/* Edit Mode Alert Banner */}
+      {isEditing && (
+        <div className="p-4 rounded-2xl bg-purple-50 border border-purple-300 text-purple-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-purple-100 rounded-xl text-purple-800 shrink-0">
+              <Pencil className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold bg-purple-200/80 px-2 py-0.5 rounded text-purple-900">
+                  {editId}
+                </span>
+                <span className="text-xs font-bold text-purple-900">Editing Pre-Approval Request</span>
+              </div>
+              <p className="text-xs text-purple-800 mt-0.5">
+                Update constituent plots, sanction number, or replace attached document and click &quot;Save Changes&quot;.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push('/owner/dashboard')}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-purple-300 bg-white hover:bg-purple-100 text-purple-900 transition self-start sm:self-auto cursor-pointer"
+          >
+            Cancel Edit
+          </button>
+        </div>
+      )}
+
       <div className="space-y-1">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-100 text-purple-800 text-xs font-semibold">
           <Layers className="w-4 h-4" />
-          <span>Multi-Plot Unification</span>
+          <span>{isEditing ? 'Edit Request' : 'Multi-Plot Unification'}</span>
         </div>
         <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight">
-          Request Plot Amalgamation
+          {isEditing ? 'Modify Plot Amalgamation Request' : 'Request Plot Amalgamation'}
         </h1>
         <p className="text-xs text-gray-500">
           Primary Plot No. {session?.plotNumber} • Combines adjacent plots into a unified maintenance
@@ -148,7 +281,7 @@ export default function PlotAmalgamationPage() {
               <button
                 type="button"
                 onClick={() => addPlot(customPlotInput)}
-                className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition"
+                className="px-4 py-2 bg-purple-700 hover:bg-purple-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1 transition cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Plot</span>
@@ -174,7 +307,7 @@ export default function PlotAmalgamationPage() {
                   <button
                     type="button"
                     onClick={() => removePlot(sp)}
-                    className="p-0.5 hover:bg-purple-200 rounded-full"
+                    className="p-0.5 hover:bg-purple-200 rounded-full cursor-pointer"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -236,7 +369,7 @@ export default function PlotAmalgamationPage() {
           <button
             type="button"
             onClick={() => router.push('/owner/dashboard')}
-            className="px-4 py-2 text-xs sm:text-sm font-semibold text-gray-600"
+            className="px-4 py-2 text-xs sm:text-sm font-semibold text-gray-600 cursor-pointer"
           >
             Cancel
           </button>
@@ -244,14 +377,14 @@ export default function PlotAmalgamationPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="px-6 py-2.5 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition flex items-center gap-2"
+            className="px-6 py-2.5 bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs sm:text-sm rounded-xl shadow-xs transition flex items-center gap-2 cursor-pointer"
           >
             {submitting ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <CheckCircle2 className="w-4 h-4" />
             )}
-            <span>Submit Amalgamation Request</span>
+            <span>{isEditing ? 'Save Changes to Amalgamation' : 'Submit Amalgamation Request'}</span>
           </button>
         </div>
       </form>

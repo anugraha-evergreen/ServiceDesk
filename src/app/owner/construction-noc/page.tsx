@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from '@/lib/session';
 import { UploadedDoc } from '@/lib/types';
 import { DirectDriveUploader } from '@/components/DirectDriveUploader';
@@ -22,14 +22,35 @@ import {
   Lock,
   ChevronDown,
   ChevronUp,
+  Pencil,
 } from 'lucide-react';
 
 export default function ConstructionNocPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="py-20 text-center text-sm text-gray-500 animate-pulse">
+          Loading Construction NOC application...
+        </div>
+      }
+    >
+      <ConstructionNocForm />
+    </Suspense>
+  );
+}
+
+function ConstructionNocForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('edit');
+  const isEditing = Boolean(editId);
+
   const { session, loading } = useSession();
 
   const [rulesAccepted, setRulesAccepted] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
+  const [loadingEdit, setLoadingEdit] = useState(false);
 
   // Requirement 3: Just Contractor Name/Number and Owner Name/Number
   const [ownerContactName, setOwnerContactName] = useState('');
@@ -50,11 +71,55 @@ export default function ConstructionNocPage() {
       router.push('/');
       return;
     }
-    if (session) {
+    if (session && !isEditing) {
       setOwnerContactName(session.ownerName || '');
       setOwnerContactPhone(session.phone || '');
     }
-  }, [session, loading, router]);
+  }, [session, loading, router, isEditing]);
+
+  // Load existing request data if in edit mode
+  useEffect(() => {
+    if (editId) {
+      setLoadingEdit(true);
+      fetch(`/api/requests/${editId}?role=owner`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.request) {
+            const req = data.request;
+            if (req.status === 'approved' || req.status === 'completed') {
+              setIsLocked(true);
+            }
+            if (req.rulesAcceptedAt) setRulesAccepted(true);
+            if (req.ownerContactName) setOwnerContactName(req.ownerContactName);
+            else if (session?.ownerName) setOwnerContactName(session.ownerName);
+
+            if (req.ownerContactPhone) setOwnerContactPhone(req.ownerContactPhone);
+            else if (session?.phone) setOwnerContactPhone(session.phone);
+
+            if (req.contractorName) setContractorName(req.contractorName);
+            if (req.contractorPhone) setContractorPhone(req.contractorPhone);
+
+            if (req.documents && Array.isArray(req.documents)) {
+              const docMap: Record<string, UploadedDoc> = {};
+              req.documents.forEach((d: UploadedDoc) => {
+                docMap[d.category] = d;
+              });
+              setDocs(docMap);
+              if (docMap.neighbour_permission || docMap.labourer_ids) {
+                setShowOptionalUploads(true);
+              }
+            }
+          } else {
+            setFormError('Request not found or unavailable for editing.');
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          setFormError('Failed to load application details.');
+        })
+        .finally(() => setLoadingEdit(false));
+    }
+  }, [editId, session]);
 
   const handleDocUploaded = (doc: UploadedDoc) => {
     setDocs((prev) => ({
@@ -100,26 +165,38 @@ export default function ConstructionNocPage() {
     try {
       const documentsList = Object.values(docs);
 
-      const res = await fetch('/api/requests', {
-        method: 'POST',
+      const endpoint = isEditing ? `/api/requests/${editId}?role=owner` : '/api/requests';
+      const method = isEditing ? 'PATCH' : 'POST';
+      const payload = isEditing
+        ? {
+            ownerContactName: ownerContactName.trim(),
+            ownerContactPhone: ownerContactPhone.trim(),
+            contractorName: contractorName.trim(),
+            contractorPhone: contractorPhone.trim(),
+            documents: documentsList,
+          }
+        : {
+            plotNumber: session?.plotNumber,
+            ownerName: session?.ownerName,
+            phone: session?.phone,
+            type: 'construction_noc',
+            rulesAcceptedAt: new Date().toISOString(),
+            ownerContactName: ownerContactName.trim(),
+            ownerContactPhone: ownerContactPhone.trim(),
+            contractorName: contractorName.trim(),
+            contractorPhone: contractorPhone.trim(),
+            documents: documentsList,
+          };
+
+      const res = await fetch(endpoint, {
+        method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          plotNumber: session?.plotNumber,
-          ownerName: session?.ownerName,
-          phone: session?.phone,
-          type: 'construction_noc',
-          rulesAcceptedAt: new Date().toISOString(),
-          ownerContactName: ownerContactName.trim(),
-          ownerContactPhone: ownerContactPhone.trim(),
-          contractorName: contractorName.trim(),
-          contractorPhone: contractorPhone.trim(),
-          documents: documentsList,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error(err.error || 'Failed to submit application');
+        throw new Error(err.error || (isEditing ? 'Failed to update application' : 'Failed to submit application'));
       }
 
       router.push('/owner/dashboard');
@@ -130,18 +207,76 @@ export default function ConstructionNocPage() {
     }
   };
 
-  if (loading) return null;
+  if (loading || loadingEdit) {
+    return (
+      <div className="py-20 text-center text-sm text-gray-500 animate-pulse">
+        {loadingEdit ? 'Loading application for editing...' : 'Loading plot details...'}
+      </div>
+    );
+  }
+
+  if (isLocked) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6 py-12 text-center animate-in fade-in duration-200">
+        <div className="bg-white rounded-3xl p-8 border border-gray-200 shadow-sm space-y-4">
+          <div className="p-3 w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 mx-auto flex items-center justify-center">
+            <Lock className="w-6 h-6" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900">Application Locked (Approved)</h2>
+          <p className="text-xs text-gray-600 max-w-md mx-auto leading-relaxed">
+            Application <strong>#{editId}</strong> has already been approved or finalized by the AEOWA Management Committee. Once approved, applications cannot be altered directly by owners.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push('/owner/dashboard')}
+            className="px-5 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition cursor-pointer"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-8 animate-in fade-in duration-200">
+      {/* Edit Mode Alert Banner */}
+      {isEditing && (
+        <div className="p-4 rounded-2xl bg-amber-50 border border-amber-300 text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-amber-100 rounded-xl text-amber-800 shrink-0">
+              <Pencil className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs font-bold bg-amber-200/80 px-2 py-0.5 rounded text-amber-900">
+                  {editId}
+                </span>
+                <span className="text-xs font-bold text-amber-900">Editing Pre-Approval Application</span>
+              </div>
+              <p className="text-xs text-amber-800 mt-0.5">
+                Update your contact details or uploaded files below and click &quot;Save Changes&quot;.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => router.push('/owner/dashboard')}
+            className="text-xs font-semibold px-3 py-1.5 rounded-lg border border-amber-300 bg-white hover:bg-amber-100 text-amber-900 transition self-start sm:self-auto cursor-pointer"
+          >
+            Cancel Edit
+          </button>
+        </div>
+      )}
+
       {/* Title Header */}
       <div className="space-y-1">
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-xs font-semibold">
           <HardHat className="w-4 h-4" />
-          <span>New Application</span>
+          <span>{isEditing ? 'Edit Application' : 'New Application'}</span>
         </div>
         <h1 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight">
-          Application for Residential Construction NOC
+          {isEditing ? 'Modify Construction NOC Application' : 'Application for Residential Construction NOC'}
         </h1>
         <p className="text-xs text-gray-500">
           Plot No. {session?.plotNumber} • Applicant: {session?.ownerName}
@@ -408,7 +543,9 @@ export default function ConstructionNocPage() {
             ) : (
               <CheckCircle2 className="w-4 h-4" />
             )}
-            <span>Submit Construction NOC Application</span>
+            <span>
+              {isEditing ? 'Save Changes to Application' : 'Submit Construction NOC Application'}
+            </span>
           </button>
         </div>
       </form>

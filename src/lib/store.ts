@@ -38,6 +38,9 @@ function rowToServiceRequest(row: any): ServiceRequest {
     type: row.type,
     status: row.status,
     rulesAcceptedAt: row.rules_accepted_at,
+    ownerContactName: row.owner_contact_name,
+    ownerContactPhone: row.owner_contact_phone,
+    contractorName: row.contractor_name,
     contractorPhone: row.contractor_phone,
     supervisorPhone: row.supervisor_phone,
     emergencyPhone: row.emergency_phone,
@@ -45,6 +48,12 @@ function rowToServiceRequest(row: any): ServiceRequest {
     preConstructionChecklist: row.pre_construction_checklist,
     reMeasurementChecklist: row.re_measurement_checklist,
     postConstructionRefund: row.post_construction_refund,
+    saleDeedDetails: row.sale_deed_details,
+    amalgamationDetails: row.amalgamation_details,
+    adminNotes: row.admin_notes,
+    generatedNocPdfUrl: row.generated_noc_pdf_url,
+    generatedNocCertificateId: row.generated_noc_certificate_id,
+    refundSettlementPdfUrl: row.refund_settlement_pdf_url,
     createdAt: row.created_at || new Date().toISOString(),
     updatedAt: row.updated_at || new Date().toISOString(),
   };
@@ -59,6 +68,9 @@ function serviceRequestToRow(req: Partial<ServiceRequest>): any {
   if (req.type !== undefined) row.type = req.type;
   if (req.status !== undefined) row.status = req.status;
   if (req.rulesAcceptedAt !== undefined) row.rules_accepted_at = req.rulesAcceptedAt;
+  if (req.ownerContactName !== undefined) row.owner_contact_name = req.ownerContactName;
+  if (req.ownerContactPhone !== undefined) row.owner_contact_phone = req.ownerContactPhone;
+  if (req.contractorName !== undefined) row.contractor_name = req.contractorName;
   if (req.contractorPhone !== undefined) row.contractor_phone = req.contractorPhone;
   if (req.supervisorPhone !== undefined) row.supervisor_phone = req.supervisorPhone;
   if (req.emergencyPhone !== undefined) row.emergency_phone = req.emergencyPhone;
@@ -66,6 +78,12 @@ function serviceRequestToRow(req: Partial<ServiceRequest>): any {
   if (req.preConstructionChecklist !== undefined) row.pre_construction_checklist = req.preConstructionChecklist;
   if (req.reMeasurementChecklist !== undefined) row.re_measurement_checklist = req.reMeasurementChecklist;
   if (req.postConstructionRefund !== undefined) row.post_construction_refund = req.postConstructionRefund;
+  if (req.saleDeedDetails !== undefined) row.sale_deed_details = req.saleDeedDetails;
+  if (req.amalgamationDetails !== undefined) row.amalgamation_details = req.amalgamationDetails;
+  if (req.adminNotes !== undefined) row.admin_notes = req.adminNotes;
+  if (req.generatedNocPdfUrl !== undefined) row.generated_noc_pdf_url = req.generatedNocPdfUrl;
+  if (req.generatedNocCertificateId !== undefined) row.generated_noc_certificate_id = req.generatedNocCertificateId;
+  if (req.refundSettlementPdfUrl !== undefined) row.refund_settlement_pdf_url = req.refundSettlementPdfUrl;
   if (req.updatedAt !== undefined) row.updated_at = req.updatedAt;
   return row;
 }

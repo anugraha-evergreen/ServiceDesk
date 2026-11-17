@@ -17,6 +17,7 @@ import {
   FileCheck2,
   Calendar,
   Lock,
+  Pencil,
 } from 'lucide-react';
 
 export default function OwnerDashboardPage() {
@@ -245,7 +246,32 @@ export default function OwnerDashboardPage() {
                     </span>
                   </div>
 
-                  <StatusBadge status={req.status} />
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={req.status} />
+
+                    {req.status !== 'approved' && req.status !== 'completed' ? (
+                      <Link
+                        href={
+                          req.type === 'construction_noc'
+                            ? `/owner/construction-noc?edit=${req.id}`
+                            : req.type === 'remeasurement_noc'
+                            ? `/owner/remeasurement-noc?edit=${req.id}`
+                            : req.type === 'sale_deed'
+                            ? `/owner/sale-deed?edit=${req.id}`
+                            : `/owner/amalgamation?edit=${req.id}`
+                        }
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-semibold transition"
+                      >
+                        <Pencil className="w-3.5 h-3.5 text-emerald-700" />
+                        <span>Edit Application</span>
+                      </Link>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-50 border border-gray-200 text-gray-500 text-[11px] font-medium">
+                        <Lock className="w-3 h-3 text-gray-400" />
+                        <span>Locked (Approved)</span>
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Submission Meta */}
