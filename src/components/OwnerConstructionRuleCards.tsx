@@ -15,6 +15,7 @@ import {
   Check,
   Lightbulb,
   Lock,
+  ExternalLink,
 } from 'lucide-react';
 
 export interface ConstructionRuleCard {
@@ -25,6 +26,11 @@ export interface ConstructionRuleCard {
   officialRule: string;
   whatItMeans: string;
   keyChecklist: string[];
+  externalLink?: {
+    label: string;
+    description: string;
+    url: string;
+  };
 }
 
 export const OWNER_CONSTRUCTION_RULES: ConstructionRuleCard[] = [
@@ -139,14 +145,20 @@ export const OWNER_CONSTRUCTION_RULES: ConstructionRuleCard[] = [
     category: '8. Completion & Refund',
     icon: CheckCircle2,
     officialRule:
-      'Building plans must incorporate a functional Rainwater Harvesting (RWH) groundwater recharge pit of prescribed capacity. Upon completion of construction, the Managing Committee will conduct a physical inspection to verify total debris removal, road/drain condition, and RWH installation before processing the ₹20,000 security deposit refund.',
+      'Rainwater harvesting (RWH) is mandatory under the Bangalore Water Supply and Sewerage Board (BWSSB) regulations. Building plans must incorporate a functional Rainwater Harvesting (RWH) groundwater recharge pit of prescribed capacity. Upon completion of construction, the Managing Committee will conduct a physical inspection to verify total debris removal, road/drain condition, and RWH installation before processing the ₹20,000 security deposit refund.',
     whatItMeans:
-      'Rainwater harvesting protects our layout groundwater reserves. Ensure your builder constructs the recharge pit according to plan. Once construction wraps up, cart away all leftover rubble and mud from the road, then request the final Association inspection to receive your full ₹20,000 refund!',
+      'Rainwater harvesting (RWH) is mandatory under Bangalore Water Supply and Sewerage Board (BWSSB) regulations for all buildings. Ensure your architect and builder construct the recharge pit according to BWSSB guidelines and approved layout plans. Once construction wraps up, cart away all leftover rubble and mud from the road, then request the final Association inspection to receive your full ₹20,000 refund!',
     keyChecklist: [
-      'Functional Rainwater Harvesting (RWH) recharge pit',
+      'Mandatory RWH setup under BWSSB regulations',
+      'Functional groundwater percolation / recharge pit',
       'Complete debris and rubble clearance post-construction',
       'Final site inspection sign-off & full ₹20,000 refund release',
     ],
+    externalLink: {
+      label: 'Read official BWSSB RWH Regulations',
+      description: 'Rainwater harvesting (RWH) is mandatory under the Bangalore Water Supply and Sewerage Board (BWSSB) regulations.',
+      url: 'https://bwssb.karnataka.gov.in/page/Rain+Water+Harvesting/en',
+    },
   },
 ];
 
@@ -218,7 +230,7 @@ export const OwnerConstructionRuleCards: React.FC<OwnerConstructionRuleCardsProp
             <span>1. Mandatory Construction Rules (Review Each Rule to Accept)</span>
           </h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            Step through each rule card to understand bylaws, worker sanitation, and security deposit terms.
+            Step through each rule card to understand society rules, worker sanitation, and security deposit terms.
           </p>
         </div>
         <span className="text-xs font-mono font-bold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 self-start sm:self-auto shrink-0">
@@ -286,7 +298,7 @@ export const OwnerConstructionRuleCards: React.FC<OwnerConstructionRuleCardsProp
         {/* Official Rule Box */}
         <div className="p-3.5 bg-white rounded-xl border border-emerald-100 shadow-2xs space-y-1">
           <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">
-            Official Association Bylaw:
+            Official Society Rule:
           </span>
           <p className="text-xs text-gray-700 leading-relaxed font-serif">
             &ldquo;{currentRule.officialRule}&rdquo;
@@ -303,6 +315,30 @@ export const OwnerConstructionRuleCards: React.FC<OwnerConstructionRuleCardsProp
             {currentRule.whatItMeans}
           </p>
         </div>
+
+        {/* External Link Callout (e.g. BWSSB RWH Mandate) */}
+        {currentRule.externalLink && (
+          <div className="p-3.5 bg-blue-50/90 rounded-xl border border-blue-200 text-blue-950 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+            <div className="text-xs space-y-0.5">
+              <span className="font-bold text-blue-900 flex items-center gap-1.5">
+                <ExternalLink className="w-3.5 h-3.5 text-blue-700 shrink-0" />
+                <span>BWSSB Statutory Mandate</span>
+              </span>
+              <p className="text-blue-800 leading-relaxed font-medium">
+                {currentRule.externalLink.description}
+              </p>
+            </div>
+            <a
+              href={currentRule.externalLink.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-3.5 py-2 bg-blue-700 hover:bg-blue-800 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-2xs shrink-0 whitespace-nowrap cursor-pointer"
+            >
+              <span>{currentRule.externalLink.label}</span>
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          </div>
+        )}
 
         {/* Key Checklist bullets */}
         <div className="space-y-1 pt-1">

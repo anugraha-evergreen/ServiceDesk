@@ -30,7 +30,7 @@ export const MID_CONSTRUCTION_TAG_OPTIONS = [
   'Illegal BESCOM Power or Water Tapping',
   'Working Outside Permitted Hours / Sunday Noise',
   'Road Curb, Stormwater Drain or Tree Damage',
-  'Other Field Observation / Bylaw Violation',
+  'Other Field Observation / Society Rule Violation',
 ];
 
 export const MidConstructionReviewModule: React.FC<MidConstructionReviewModuleProps> = ({
@@ -224,7 +224,7 @@ export const MidConstructionReviewModule: React.FC<MidConstructionReviewModulePr
               <span>Mid-Construction Site Review &amp; Photo Log</span>
             </h3>
             <p className="text-xs text-gray-500">
-              Plot #{request.plotNumber} • Ongoing layout bylaws monitoring &amp; field evidence
+              Plot #{request.plotNumber} • Ongoing layout society rules monitoring &amp; field evidence
             </p>
           </div>
         </div>
@@ -463,7 +463,7 @@ export const MidConstructionReviewModule: React.FC<MidConstructionReviewModulePr
             <HardHat className="w-7 h-7 text-gray-300 mx-auto" />
             <p className="text-xs text-gray-500 max-w-sm mx-auto">
               No mid-construction observations or photos logged yet for Plot #{request.plotNumber}.
-              Click <strong>&quot;Add Observation / Photo&quot;</strong> to record layout bylaw observations during site visits.
+              Click <strong>&quot;Add Observation / Photo&quot;</strong> to record layout society rule observations during site visits.
             </p>
           </div>
         ) : (

@@ -164,26 +164,31 @@ export default function AdminDashboardPage() {
   const approvedCount = requests.filter((r) => r.status === 'approved').length;
   const completedCount = requests.filter((r) => r.status === 'completed').length;
 
-  // Active Escrow Custody:
-  // Initial deposit received minus any settled refunds and deductions.
-  // Unsettled/active plots hold full deposit (₹20,000). Fully settled plots hold ₹0 (or net remaining).
-  const totalEscrowDeposits = requests.reduce((sum, r) => {
-    if (!r.preConstructionChecklist?.securityDepositPaid) return sum;
-    const baseDeposit = r.postConstructionRefund?.initialDeposit ?? 20000;
-    const ref = r.postConstructionRefund;
-    if (ref && ref.refundStatus && ref.refundStatus !== 'pending') {
-      const deductions = ref.deductionAmount || 0;
-      const refunds = ref.finalRefundAmount || 0;
-      return sum + Math.max(0, baseDeposit - deductions - refunds);
-    }
-    return sum + baseDeposit;
-  }, 0);
+  // Active Escrow Custody Calculation:
+  // Total initial deposits collected (e.g. ₹40,000 from Plot 50 + Plot 18)
+  // Minus actual refunds paid out to owners (e.g. ₹15,000 to Plot 18)
+  // Equals total amount remaining in Association custody (e.g. ₹25,000 = ₹20,000 active deposit + ₹5,000 retained deductions)
+  let totalDepositsReceived = 0;
+  let totalRefundsPaid = 0;
+  let totalDeductionsRetained = 0;
+  let activeEscrowPlotsCount = 0;
 
-  const activeEscrowPlotsCount = requests.filter((r) => {
-    if (!r.preConstructionChecklist?.securityDepositPaid) return false;
-    const ref = r.postConstructionRefund;
-    return !ref || ref.refundStatus === 'pending';
-  }).length;
+  requests.forEach((r) => {
+    if (r.preConstructionChecklist?.securityDepositPaid) {
+      const deposit = r.postConstructionRefund?.initialDeposit ?? 20000;
+      totalDepositsReceived += deposit;
+      const ref = r.postConstructionRefund;
+      if (ref && ref.refundStatus && ref.refundStatus !== 'pending') {
+        totalRefundsPaid += ref.finalRefundAmount || 0;
+        totalDeductionsRetained += ref.deductionAmount || 0;
+      } else {
+        activeEscrowPlotsCount += 1;
+      }
+    }
+  });
+
+  const totalEscrowDeposits = Math.max(0, totalDepositsReceived - totalRefundsPaid);
+  const activeDepositsAmount = Math.max(0, totalEscrowDeposits - totalDeductionsRetained);
 
   // Filtered List logic across ALL requests
   const filteredRequests = requests.filter((r) => {
@@ -404,7 +409,15 @@ export default function AdminDashboardPage() {
               </span>
             </div>
             <span className="text-[10px] text-slate-500 font-medium mt-1.5 block">
-              {activeEscrowPlotsCount} active {activeEscrowPlotsCount === 1 ? 'deposit' : 'deposits'} held in Association custody
+              {totalDeductionsRetained > 0 ? (
+                <>
+                  ₹{activeDepositsAmount.toLocaleString('en-IN')} active + ₹{totalDeductionsRetained.toLocaleString('en-IN')} deductions retained (₹{totalRefundsPaid.toLocaleString('en-IN')} refunded)
+                </>
+              ) : (
+                <>
+                  {activeEscrowPlotsCount} active {activeEscrowPlotsCount === 1 ? 'deposit' : 'deposits'} held in Association custody
+                </>
+              )}
             </span>
           </Link>
         </div>

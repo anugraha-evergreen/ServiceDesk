@@ -65,6 +65,28 @@ export default function AdminRefundsPage() {
     );
   }
 
+  let totalDepositsReceived = 0;
+  let totalRefundsPaid = 0;
+  let totalDeductionsRetained = 0;
+  let activeEscrowPlotsCount = 0;
+
+  requests.forEach((r) => {
+    if (r.preConstructionChecklist?.securityDepositPaid) {
+      const deposit = r.postConstructionRefund?.initialDeposit ?? 20000;
+      totalDepositsReceived += deposit;
+      const ref = r.postConstructionRefund;
+      if (ref && ref.refundStatus && ref.refundStatus !== 'pending') {
+        totalRefundsPaid += ref.finalRefundAmount || 0;
+        totalDeductionsRetained += ref.deductionAmount || 0;
+      } else {
+        activeEscrowPlotsCount += 1;
+      }
+    }
+  });
+
+  const totalEscrowHeld = Math.max(0, totalDepositsReceived - totalRefundsPaid);
+  const activeDepositsAmount = Math.max(0, totalEscrowHeld - totalDeductionsRetained);
+
   return (
     <div className="space-y-6 pb-12 animate-in fade-in duration-200">
       <div>
@@ -88,6 +110,45 @@ export default function AdminRefundsPage() {
         <p className="text-xs text-gray-500">
           Track incoming deposit UTRs, calculate site-specific deductions, and download official settlement vouchers.
         </p>
+      </div>
+
+      {/* Financial Overview Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-2xs">
+          <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
+            Total Deposits Received
+          </span>
+          <span className="text-xl font-black text-gray-900 mt-1 block font-mono">
+            ₹{totalDepositsReceived.toLocaleString('en-IN')}
+          </span>
+          <span className="text-[10px] text-gray-400 mt-0.5 block">
+            Across {requests.filter((r) => r.preConstructionChecklist?.securityDepositPaid).length} construction plots
+          </span>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-2xs">
+          <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">
+            Refunds Settled &amp; Paid
+          </span>
+          <span className="text-xl font-black text-blue-700 mt-1 block font-mono">
+            ₹{totalRefundsPaid.toLocaleString('en-IN')}
+          </span>
+          <span className="text-[10px] text-gray-400 mt-0.5 block">
+            ₹{totalDeductionsRetained.toLocaleString('en-IN')} deductions retained
+          </span>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200 shadow-2xs">
+          <span className="text-[11px] font-bold text-emerald-950 uppercase tracking-wider block">
+            Total in Escrow Custody
+          </span>
+          <span className="text-xl font-black text-emerald-800 mt-1 block font-mono">
+            ₹{totalEscrowHeld.toLocaleString('en-IN')}
+          </span>
+          <span className="text-[10px] text-emerald-700 mt-0.5 block font-medium">
+            ₹{activeDepositsAmount.toLocaleString('en-IN')} active + ₹{totalDeductionsRetained.toLocaleString('en-IN')} deductions
+          </span>
+        </div>
       </div>
 
       <div className="space-y-4">
