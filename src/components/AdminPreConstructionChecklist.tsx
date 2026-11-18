@@ -306,42 +306,43 @@ export const AdminPreConstructionChecklist: React.FC<AdminPreConstructionCheckli
 
   if (isChecklistMet && !isExpanded) {
     return (
-      <div className="bg-white rounded-2xl border border-emerald-200 p-4 sm:p-5 shadow-xs transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start sm:items-center gap-3.5">
+      <div className="bg-white rounded-2xl border border-emerald-200 p-4 sm:p-5 shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-start sm:items-center gap-3.5 flex-1 min-w-0">
           <div className="p-2.5 bg-emerald-100 text-emerald-800 rounded-xl shrink-0 mt-0.5 sm:mt-0">
             <CheckCircle2 className="w-5 h-5 text-emerald-700" />
           </div>
-          <div>
+          <div className="space-y-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-bold text-gray-900 text-sm sm:text-base whitespace-nowrap">
+              <h3 className="font-bold text-gray-900 text-base leading-snug">
                 Pre-Construction Checklist Verified
               </h3>
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[11px] border border-emerald-200 whitespace-nowrap">
                 All 7 Society Rules Cleared
               </span>
             </div>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs text-gray-500">
               Plot #{request.plotNumber} • Security deposit verified &amp; all preconditions satisfied
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-emerald-100">
+        {/* Two buttons stacked one below the other */}
+        <div className="flex flex-col sm:items-end gap-2 shrink-0">
           <button
             type="button"
             onClick={downloadPdf}
-            className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs transition flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+            className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
           >
-            <Download className="w-4 h-4 shrink-0" />
-            <span>Download Construction NOC PDF</span>
+            <Download className="w-3.5 h-3.5 shrink-0" />
+            <span>Download NOC PDF</span>
           </button>
 
           <button
             type="button"
             onClick={() => setIsExpanded(true)}
-            className="px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-gray-50 hover:bg-emerald-50 text-emerald-900 border border-emerald-200 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap"
+            className="w-full sm:w-auto px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-gray-50 hover:bg-emerald-50 text-emerald-900 border border-emerald-200 transition flex items-center justify-center gap-1 cursor-pointer whitespace-nowrap"
           >
-            <span>View / Edit Checklist Details</span>
+            <span>View Checklist</span>
             <ChevronDown className="w-3.5 h-3.5 text-emerald-700" />
           </button>
         </div>

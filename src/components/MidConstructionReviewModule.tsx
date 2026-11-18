@@ -13,7 +13,6 @@ import {
   Plus,
   X,
   Tag,
-  CheckCircle2,
   Image as ImageIcon,
 } from 'lucide-react';
 
@@ -47,7 +46,6 @@ export const MidConstructionReviewModule: React.FC<MidConstructionReviewModulePr
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
-  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
 
   // Photo viewer lightbox
   const [activePreviewUrl, setActivePreviewUrl] = useState<string | null>(null);
@@ -96,7 +94,6 @@ export const MidConstructionReviewModule: React.FC<MidConstructionReviewModulePr
   const handleSaveObservation = async () => {
     if (!selectedTag) return;
     setSaving(true);
-    setSaveSuccessMsg(null);
 
     try {
       const uploadedUrls: string[] = [];
@@ -168,9 +165,6 @@ export const MidConstructionReviewModule: React.FC<MidConstructionReviewModulePr
       setSelectedFiles([]);
       setPreviews([]);
       setShowForm(false);
-      setSaveSuccessMsg(
-        `✓ Observation and ${uploadedUrls.length > 0 ? `${uploadedUrls.length} photo(s)` : 'findings'} saved to Plot #${request.plotNumber} record.`
-      );
     } catch (err: unknown) {
       console.error(err);
       alert('Error saving inspection observation');
@@ -215,63 +209,37 @@ export const MidConstructionReviewModule: React.FC<MidConstructionReviewModulePr
     <div className="bg-white rounded-2xl p-5 border border-emerald-100 shadow-sm space-y-4">
       {/* Card Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
           <div className="p-2 bg-emerald-100 rounded-xl text-emerald-800 shrink-0">
             <HardHat className="w-5 h-5" />
           </div>
-          <div>
-            <h3 className="font-bold text-gray-900 text-sm sm:text-base flex items-center gap-2">
-              <span>Mid-Construction Site Review &amp; Photo Log</span>
+          <div className="min-w-0">
+            <h3 className="font-bold text-gray-900 text-sm sm:text-base leading-snug">
+              Mid-Construction Site Review &amp; Photo Log
             </h3>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 truncate">
               Plot #{request.plotNumber} • Ongoing layout society rules monitoring &amp; field evidence
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
+        {/* Stacked button and pill */}
+        <div className="flex flex-col sm:items-end gap-1.5 shrink-0">
+          {!showForm && (
+            <button
+              type="button"
+              onClick={() => setShowForm(true)}
+              className="w-full sm:w-auto px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
+            >
+              <Plus className="w-3.5 h-3.5 shrink-0" />
+              <span>Add Observation</span>
+            </button>
+          )}
+          <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-600 border border-gray-200 whitespace-nowrap self-start sm:self-auto">
             {items.length} {items.length === 1 ? 'Record Logged' : 'Records Logged'}
           </span>
-
-          {!showForm && (
-            <button
-              type="button"
-              onClick={() => {
-                setShowForm(true);
-                setSaveSuccessMsg(null);
-              }}
-              className="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs transition flex items-center gap-1.5 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Observation / Photo</span>
-            </button>
-          )}
         </div>
       </div>
-
-      {/* Save Confirmation Banner with prominent + for adding more */}
-      {saveSuccessMsg && (
-        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 text-xs text-emerald-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 animate-in fade-in duration-150">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-            <span className="font-semibold">{saveSuccessMsg}</span>
-          </div>
-          {!showForm && (
-            <button
-              type="button"
-              onClick={() => {
-                setShowForm(true);
-                setSaveSuccessMsg(null);
-              }}
-              className="px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg font-bold text-xs shadow-2xs transition flex items-center gap-1 self-start sm:self-auto cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add More</span>
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Ongoing Entry Form */}
       {showForm && (
@@ -448,7 +416,6 @@ export const MidConstructionReviewModule: React.FC<MidConstructionReviewModulePr
               type="button"
               onClick={() => {
                 setShowForm(true);
-                setSaveSuccessMsg(null);
               }}
               className="text-xs text-emerald-800 hover:text-emerald-950 font-bold flex items-center gap-1 cursor-pointer"
             >
