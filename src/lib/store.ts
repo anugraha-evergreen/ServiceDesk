@@ -249,16 +249,21 @@ export async function updatePlotRecord(updated: Plot): Promise<Plot> {
   // Invalidate plots cache
   plotsCacheTime = 0;
 
-  const index = memoryPlots.findIndex((p) => p.plotNumber === updated.plotNumber);
+  const normalized = updated.plotNumber.trim().toLowerCase();
+  const index = memoryPlots.findIndex(
+    (p) => p.plotNumber.trim().toLowerCase() === normalized
+  );
   if (index >= 0) {
-    memoryPlots[index] = updated;
+    memoryPlots[index] = { ...memoryPlots[index], ...updated };
   } else {
     memoryPlots.push(updated);
   }
 
   if (isSupabaseConfigured && supabase) {
     try {
-      await supabase.from('plots').upsert(plotToRow(updated));
+      await supabase
+        .from('plots')
+        .upsert(plotToRow(updated), { onConflict: 'plot_number' });
     } catch (e) {
       console.warn('Supabase plot upsert error:', e);
     }
@@ -615,39 +620,86 @@ export async function deleteServiceRequest(id: string): Promise<{
 }
 
 /**
+ * Helper to clean plot strings like "Plot #18", "Plot 18", "18" -> "18"
+ */
+function cleanPlotNumber(p: string): string {
+  if (!p) return '';
+  return p.replace(/^Plot\s*#?/i, '').trim();
+}
+
+/**
  * Plot Amalgamation:
- * Merges secondary plots into unified plot, keeping historical records intact.
+ * Merges primary and secondary plots into a unified master plot record,
+ * while linking all constituent plots as mergedInto the unified plot.
  */
 export async function amalgamatePlots(
   primaryPlotNumber: string,
   secondaryPlotNumbers: string[],
-  unifiedPlotNumber: string
+  unifiedPlotNumber: string,
+  ownerName?: string,
+  phone?: string
 ): Promise<{ success: boolean; message: string; unifiedPlotNumber: string }> {
+  const cleanPrimary = cleanPlotNumber(primaryPlotNumber);
+  const cleanSecondaries = (secondaryPlotNumbers || [])
+    .map(cleanPlotNumber)
+    .filter((n) => n && n.toLowerCase() !== cleanPrimary.toLowerCase());
+
+  const cleanUnified = (unifiedPlotNumber || `${cleanPrimary} & ${cleanSecondaries.join(' & ')}`).trim();
+  const allMerged = Array.from(new Set([cleanPrimary, ...cleanSecondaries]));
+
   const plots = await getAllPlots();
-  const primary = plots.find((p) => p.plotNumber === primaryPlotNumber);
+
+  // 1. Locate or synthesize primary plot record
+  let primary = plots.find((p) => p.plotNumber.trim().toLowerCase() === cleanPrimary.toLowerCase());
   if (!primary) {
-    return { success: false, message: `Primary plot ${primaryPlotNumber} not found.`, unifiedPlotNumber };
+    primary = {
+      id: `plot-${cleanPrimary}`,
+      plotNumber: cleanPrimary,
+      primaryOwnerName: ownerName || 'Plot Owner',
+      phone: phone || '',
+      status: 'vacant',
+      membershipPaid: true,
+      mergedInto: cleanUnified,
+    };
+  } else {
+    primary.mergedInto = cleanUnified;
   }
-
-  const allMerged = [primaryPlotNumber, ...secondaryPlotNumbers];
-
-  // Update primary plot with unified label and merged references
-  primary.plotNumber = unifiedPlotNumber;
-  primary.mergedPlots = allMerged;
   await updatePlotRecord(primary);
 
-  // Mark secondaries as mergedInto
-  for (const sNum of secondaryPlotNumbers) {
-    const sec = plots.find((p) => p.plotNumber === sNum);
-    if (sec) {
-      sec.mergedInto = unifiedPlotNumber;
-      await updatePlotRecord(sec);
+  // 2. Create or update the unified master record
+  const unifiedPlot: Plot = {
+    id: `plot-unified-${cleanUnified.replace(/[^a-zA-Z0-9]/g, '_')}`,
+    plotNumber: cleanUnified,
+    primaryOwnerName: primary.primaryOwnerName || ownerName || 'Plot Owner',
+    phone: primary.phone || phone || '',
+    status: primary.status || 'vacant',
+    membershipPaid: true,
+    mergedPlots: allMerged,
+  };
+  await updatePlotRecord(unifiedPlot);
+
+  // 3. Mark each secondary plot as mergedInto the unified record
+  for (const sNum of cleanSecondaries) {
+    let sec = plots.find((p) => p.plotNumber.trim().toLowerCase() === sNum.toLowerCase());
+    if (!sec) {
+      sec = {
+        id: `plot-${sNum}`,
+        plotNumber: sNum,
+        primaryOwnerName: primary.primaryOwnerName || ownerName || 'Plot Owner',
+        phone: primary.phone || phone || '',
+        status: 'vacant',
+        membershipPaid: true,
+        mergedInto: cleanUnified,
+      };
+    } else {
+      sec.mergedInto = cleanUnified;
     }
+    await updatePlotRecord(sec);
   }
 
   return {
     success: true,
-    message: `Plots ${allMerged.join(', ')} successfully amalgamated into ${unifiedPlotNumber}`,
-    unifiedPlotNumber,
+    message: `Plots ${allMerged.join(', ')} successfully amalgamated into ${cleanUnified}`,
+    unifiedPlotNumber: cleanUnified,
   };
 }

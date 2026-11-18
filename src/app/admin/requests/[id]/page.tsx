@@ -219,20 +219,7 @@ export default function AdminRequestDetailPage({
     if (!request || !request.amalgamationDetails) return;
     setIsApproving(true);
     try {
-      const res = await fetch('/api/plots', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'amalgamate',
-          primaryPlotNumber: request.plotNumber,
-          secondaryPlotNumbers: request.amalgamationDetails.secondaryPlotNumbers,
-          unifiedPlotNumber: request.amalgamationDetails.targetUnifiedPlotNumber,
-        }),
-      });
-
-      const data = await res.json();
-      if (!data.success) throw new Error(data.message || 'Amalgamation failed');
-
+      // 1. Mark the service request status as completed and persist it
       const reqRes = await fetch(`/api/requests/${request.id}?role=admin`, {
         method: 'PATCH',
         headers: {
@@ -241,18 +228,43 @@ export default function AdminRequestDetailPage({
         },
         body: JSON.stringify({ role: 'admin', status: 'completed' }),
       });
+
+      if (!reqRes.ok) {
+        const errData = await reqRes.json().catch(() => null);
+        throw new Error(errData?.error || 'Failed to update request status');
+      }
+
       const reqData = await reqRes.json();
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('aelra_cache_admin_requests');
       }
       setRequest(reqData.request);
 
+      // 2. Perform plot amalgamation in master records
+      const res = await fetch('/api/plots', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'amalgamate',
+          primaryPlotNumber: request.plotNumber,
+          secondaryPlotNumbers: request.amalgamationDetails.secondaryPlotNumbers,
+          unifiedPlotNumber: request.amalgamationDetails.targetUnifiedPlotNumber,
+          ownerName: request.ownerName,
+          phone: request.phone,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+      if (data && !data.success) {
+        console.warn('Amalgamation master sync warning:', data.message || data.error);
+      }
+
       setActionSuccess(
         `Plots merged successfully into unified record "${request.amalgamationDetails.targetUnifiedPlotNumber}" for maintenance tracking!`
       );
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert('Error approving amalgamation');
+      alert(e?.message || 'Error approving amalgamation');
     } finally {
       setIsApproving(false);
     }

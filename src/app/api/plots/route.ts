@@ -17,7 +17,13 @@ export async function POST(req: NextRequest) {
     const { action } = body;
 
     if (action === 'amalgamate') {
-      const { primaryPlotNumber, secondaryPlotNumbers, unifiedPlotNumber } = body;
+      const {
+        primaryPlotNumber,
+        secondaryPlotNumbers,
+        unifiedPlotNumber,
+        ownerName,
+        phone,
+      } = body;
       if (!primaryPlotNumber || !secondaryPlotNumbers || !unifiedPlotNumber) {
         return NextResponse.json(
           { error: 'Missing amalgamation plot numbers' },
@@ -25,7 +31,13 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const result = await amalgamatePlots(primaryPlotNumber, secondaryPlotNumbers, unifiedPlotNumber);
+      const result = await amalgamatePlots(
+        primaryPlotNumber,
+        secondaryPlotNumbers,
+        unifiedPlotNumber,
+        ownerName,
+        phone
+      );
       return NextResponse.json(result);
     }
 

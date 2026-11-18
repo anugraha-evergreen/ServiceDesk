@@ -99,8 +99,24 @@ export default function AdminDashboardPage() {
           generatedNocCertificateId: req.generatedNocCertificateId || `AEOWA/NOC/2026/${req.plotNumber}`,
           generatedNocPdfUrl: `/api/pdf/noc?requestId=${req.id}&role=admin`,
         };
-      } else if (req.type === 'sale_deed' || req.type === 'plot_amalgamation') {
+      } else if (req.type === 'sale_deed') {
         bodyData = { role: 'admin', status: 'completed' };
+      } else if (req.type === 'plot_amalgamation') {
+        bodyData = { role: 'admin', status: 'completed' };
+        if (req.amalgamationDetails) {
+          fetch('/api/plots', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'amalgamate',
+              primaryPlotNumber: req.plotNumber,
+              secondaryPlotNumbers: req.amalgamationDetails.secondaryPlotNumbers,
+              unifiedPlotNumber: req.amalgamationDetails.targetUnifiedPlotNumber,
+              ownerName: req.ownerName,
+              phone: req.phone,
+            }),
+          }).catch(console.error);
+        }
       }
 
       const res = await fetch(`/api/requests/${req.id}?role=admin`, {
