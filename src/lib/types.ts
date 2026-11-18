@@ -115,6 +115,7 @@ export interface MidConstructionInspectionItem {
   notes?: string;
   imageUrl?: string;
   imageFileName?: string;
+  imageUrls?: string[];
   inspectedAt?: string;
   inspectedBy?: string;
 }

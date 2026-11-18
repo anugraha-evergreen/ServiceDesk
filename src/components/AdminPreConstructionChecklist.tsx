@@ -15,6 +15,8 @@ import {
   FileText,
   Trash2,
   ExternalLink,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 interface AdminPreConstructionChecklistProps {
@@ -75,6 +77,10 @@ export const AdminPreConstructionChecklist: React.FC<AdminPreConstructionCheckli
     form.labourerToiletInstalled &&
     form.bescomWaterArrangementVerified &&
     form.labourersRegistered;
+
+  const isChecklistMet =
+    allItemsChecked || request.status === 'approved' || request.status === 'completed';
+  const [isExpanded, setIsExpanded] = useState<boolean>(!isChecklistMet);
 
   const handleToggle = (key: keyof PreConstructionChecklist) => {
     setForm((prev) => ({
@@ -298,6 +304,53 @@ export const AdminPreConstructionChecklist: React.FC<AdminPreConstructionCheckli
     window.open(`/api/pdf/noc?requestId=${request.id}&role=admin`, '_blank');
   };
 
+  if (isChecklistMet && !isExpanded) {
+    return (
+      <div className="bg-white rounded-2xl border border-emerald-200 p-4 sm:p-5 shadow-xs transition-all">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="p-2.5 bg-emerald-100 text-emerald-800 rounded-xl shrink-0">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-bold text-gray-900 text-sm sm:text-base">
+                  Pre-Construction Checklist Verified
+                </h3>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[11px] border border-emerald-200">
+                  All 7 Bylaws Cleared
+                </span>
+              </div>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Plot #{request.plotNumber} • Security deposit verified &amp; all preconditions satisfied
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
+            <button
+              type="button"
+              onClick={downloadPdf}
+              className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>Download Construction NOC PDF</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setIsExpanded(true)}
+              className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-gray-50 hover:bg-emerald-50 text-emerald-900 border border-emerald-200 transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>View / Edit Checklist Details</span>
+              <ChevronDown className="w-3.5 h-3.5 text-emerald-700" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-white rounded-2xl border border-emerald-100 shadow-sm p-5 space-y-5">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-2">
@@ -316,6 +369,17 @@ export const AdminPreConstructionChecklist: React.FC<AdminPreConstructionCheckli
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {isChecklistMet && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded(false)}
+              className="text-xs text-emerald-900 hover:text-emerald-950 font-semibold px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition flex items-center gap-1 cursor-pointer"
+            >
+              <span>Collapse Checklist</span>
+              <ChevronUp className="w-3.5 h-3.5" />
+            </button>
+          )}
+
           {!allItemsChecked && (
             <button
               type="button"
@@ -638,7 +702,7 @@ export const AdminPreConstructionChecklist: React.FC<AdminPreConstructionCheckli
       </div>
 
       {/* Action Toolbar */}
-      <div className="pt-4 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="pt-4 border-t border-gray-100 flex flex-wrap items-center justify-between gap-3 w-full">
         <div className="flex flex-wrap items-center gap-2">
           {request.status !== 'approved' && request.status !== 'completed' ? (
             <button
@@ -672,14 +736,14 @@ export const AdminPreConstructionChecklist: React.FC<AdminPreConstructionCheckli
           )}
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-2">
           {request.status === 'approved' || request.status === 'completed' || saveSuccess || allItemsChecked ? (
             <button
               type="button"
               onClick={downloadPdf}
-              className="flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
+              className="px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer"
             >
-              <Download className="w-4 h-4" />
+              <Download className="w-4 h-4 shrink-0" />
               <span>Download Construction NOC PDF</span>
             </button>
           ) : (
@@ -687,6 +751,17 @@ export const AdminPreConstructionChecklist: React.FC<AdminPreConstructionCheckli
               <Lock className="w-3.5 h-3.5 text-gray-400" />
               <span>Verify checklist to unlock PDF</span>
             </div>
+          )}
+
+          {isChecklistMet && (
+            <button
+              type="button"
+              onClick={() => setIsExpanded(false)}
+              className="px-3 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 transition flex items-center gap-1 cursor-pointer"
+            >
+              <span>Collapse Card</span>
+              <ChevronUp className="w-3.5 h-3.5 text-gray-600" />
+            </button>
           )}
         </div>
       </div>

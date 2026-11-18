@@ -493,31 +493,23 @@ export const RefundCalculatorModal: React.FC<RefundCalculatorModalProps> = ({
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                          {item.imageUrl && (
-                            <div className="flex items-center gap-1.5">
+                          {((item.imageUrls && item.imageUrls.length > 0) ? item.imageUrls : item.imageUrl ? [item.imageUrl] : []).map((imgUrl, pIdx) => (
+                            <div key={pIdx} className="flex items-center gap-1.5">
                               <button
                                 type="button"
-                                onClick={() => setActivePhotoLightbox(item.imageUrl || null)}
+                                onClick={() => setActivePhotoLightbox(imgUrl)}
                                 className="relative w-9 h-9 rounded-md overflow-hidden bg-gray-100 border border-gray-300 group shadow-2xs cursor-pointer"
                                 title="Click to view mid-construction photo"
                               >
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img
-                                  src={item.imageUrl}
+                                  src={imgUrl}
                                   alt="Mid-construction evidence"
                                   className="w-full h-full object-cover group-hover:scale-105 transition"
                                 />
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => setActivePhotoLightbox(item.imageUrl || null)}
-                                className="text-[11px] text-emerald-800 font-semibold hover:underline flex items-center gap-0.5 cursor-pointer"
-                              >
-                                <span>Photo</span>
-                                <ExternalLink className="w-2.5 h-2.5" />
-                              </button>
                             </div>
-                          )}
+                          ))}
 
                           {isVio && (
                             <button
